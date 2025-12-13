@@ -1,14 +1,36 @@
 import type { Task, ScheduledTask, WorkEvent } from '../types';
 import { isSameDay, getHours, setHours, setMinutes, startOfDay, subDays } from 'date-fns';
 
+/**
+ * 指定日が休日（タスクをスケジュールできる日）かどうかを判定する
+ * 
+ * 判定ルール:
+ * - 「休み」イベントがある → 休日（タスク可）
+ * - イベントが全くない → 休日（タスク可）
+ * - 勤務イベント（日勤/夜勤）がある → 休日ではない（タスク不可）
+ * - その他イベント（非勤務の予定）がある → 休日ではない（タスク不可）
+ * 
+ * @param date 判定対象の日付
+ * @param events 勤務イベントの配列
+ * @returns 休日の場合true、そうでない場合false
+ */
 export function isHoliday(date: Date, events: WorkEvent[]): boolean {
     const dayEvents = events.filter(e => isSameDay(e.start, date));
 
-    // Condition: "休み" event exists OR no event exists
-    const hasYasumi = dayEvents.some(e => e.eventType === '休み');
-    const noEvents = dayEvents.length === 0;
+    // イベントがない日は休日
+    if (dayEvents.length === 0) {
+        return true;
+    }
 
-    return hasYasumi || noEvents;
+    // 「休み」イベントがある場合は休日
+    const hasYasumi = dayEvents.some(e => e.eventType === '休み');
+    if (hasYasumi) {
+        return true;
+    }
+
+    // 勤務イベント（日勤/夜勤）または非勤務イベント（その他）がある場合は休日ではない
+    // → タスクをスケジュールしない
+    return false;
 }
 
 export function getPreviousWorkEndTime(date: Date, events: WorkEvent[]): Date | null {
