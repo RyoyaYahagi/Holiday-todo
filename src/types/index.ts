@@ -10,6 +10,7 @@ export interface Task {
 export interface ScheduledTask extends Task {
     scheduledTime: number; // timestamp
     isCompleted: boolean;
+    notifiedAt?: number; // timestamp when notification was sent
 }
 
 export type EventType = '夜勤' | '日勤' | '休み' | 'その他';
