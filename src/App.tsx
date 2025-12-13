@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
-import { useIndexedDB } from './hooks/useIndexedDB';
+import { useSupabase } from './hooks/useSupabase';
+import { useAuth } from './contexts/AuthContext';
 import { useNotifications } from './hooks/useNotifications';
 import { TaskList } from './components/TaskList';
 import { TaskForm } from './components/TaskForm';
 import { Calendar } from './components/Calendar';
 import { Settings } from './components/Settings';
+import { Login } from './components/Login';
 import { scheduleTasksAcrossHolidays } from './lib/scheduler';
 
 function App() {
+  const { user, loading: authLoading, signOut } = useAuth();
+
   const {
     tasks,
     scheduledTasks,
@@ -22,7 +26,7 @@ function App() {
     deleteScheduledTask,
     exportData,
     importData
-  } = useIndexedDB();
+  } = useSupabase();
 
   const [activeTab, setActiveTab] = useState<'tasks' | 'calendar' | 'settings'>('tasks');
 
@@ -44,7 +48,7 @@ function App() {
   // - 各休日には最大3件まで
   // - 一度スケジュールしたタスクは再スケジュールしない
   useEffect(() => {
-    if (loading) return;
+    if (loading || authLoading) return;
 
     const today = new Date();
 
@@ -55,16 +59,33 @@ function App() {
       console.log("Auto-scheduling tasks across holidays:", newSchedule);
       saveScheduledTasks([...scheduledTasks, ...newSchedule]);
     }
-  }, [loading, tasks, events, scheduledTasks]);
+  }, [loading, authLoading, tasks, events, scheduledTasks]);
 
+  // 認証読み込み中
+  if (authLoading) {
+    return <div className="loading">認証を確認中...</div>;
+  }
+
+  // 未ログイン時はログイン画面を表示
+  if (!user) {
+    return <Login />;
+  }
+
+  // データ読み込み中
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return <div className="loading">データを読み込み中...</div>;
   }
 
   return (
     <div className="app-container">
       <header className="app-header">
         <h1>Holiday Todo</h1>
+        <div className="header-user">
+          <span className="user-email">{user.email}</span>
+          <button className="logout-btn" onClick={signOut} type="button">
+            ログアウト
+          </button>
+        </div>
       </header>
 
       <main className="app-content">
@@ -130,3 +151,4 @@ function App() {
 }
 
 export default App;
+

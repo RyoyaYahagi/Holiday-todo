@@ -54,7 +54,9 @@ body {
 
 .app-header {
   padding: 1rem;
-  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
@@ -66,6 +68,37 @@ body {
   font-size: 1.2rem;
   font-weight: 700;
   color: var(--primary-color);
+}
+
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.user-email {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logout-btn {
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.logout-btn:hover {
+  border-color: var(--danger-color);
+  color: var(--danger-color);
 }
 
 .app-content {
