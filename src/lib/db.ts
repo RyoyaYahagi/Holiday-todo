@@ -117,6 +117,27 @@ export const db = {
         await db.delete('scheduledTasks', id);
     },
 
+    /**
+     * 元タスクIDに関連するすべてのScheduledTaskを削除する
+     * 
+     * @param taskId 元タスクのID
+     */
+    async deleteScheduledTasksByTaskId(taskId: string): Promise<void> {
+        const db = await initDB();
+        const tx = db.transaction('scheduledTasks', 'readwrite');
+        const allScheduled = await tx.store.getAll();
+
+        for (const scheduled of allScheduled) {
+            // taskIdフィールドがない既存データの後方互換性のため、idをフォールバックとして使用
+            const scheduledTaskId = scheduled.taskId || scheduled.id;
+            if (scheduledTaskId === taskId) {
+                await tx.store.delete(scheduled.id);
+            }
+        }
+
+        await tx.done;
+    },
+
     async exportData(): Promise<string> {
         const db = await initDB();
         const tasks = await db.getAll('tasks');

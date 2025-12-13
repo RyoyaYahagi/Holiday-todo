@@ -52,6 +52,8 @@ export function useIndexedDB() {
 
     const deleteTask = async (id: string) => {
         await db.deleteTask(id);
+        // タスクプールから削除する際、関連するスケジュール済みタスクも削除
+        await db.deleteScheduledTasksByTaskId(id);
         await refreshData();
     };
 

@@ -8,6 +8,7 @@ export interface Task {
 }
 
 export interface ScheduledTask extends Task {
+    taskId: string; // 元のTaskのID
     scheduledTime: number; // timestamp
     isCompleted: boolean;
     notifiedAt?: number; // timestamp when notification was sent

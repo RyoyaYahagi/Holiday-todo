@@ -5,8 +5,7 @@ import { TaskList } from './components/TaskList';
 import { TaskForm } from './components/TaskForm';
 import { Calendar } from './components/Calendar';
 import { Settings } from './components/Settings';
-import { scheduleTasksForHoliday } from './lib/scheduler';
-import { isSameDay } from 'date-fns';
+import { scheduleTasksAcrossHolidays } from './lib/scheduler';
 
 function App() {
   const {
@@ -39,24 +38,22 @@ function App() {
   };
 
   // Auto-scheduler logic:
-  // When 'events' or 'tasks' change, check if today needs scheduling?
-  // Or maybe only schedule when explicitly requested or just-in-time?
-  // Requirement: "休日には必ずタスクを割り当てる"
-  // Let's do a check on mount/update: If today is holiday and no tasks scheduled, schedule them.
+  // タスクを複数の休日に分配してスケジュールする
+  // - 今日が休日 → 今日 + 次の休日
+  // - 今日が休日ではない → 次の休日 + 次の次の休日
+  // - 各休日には最大3件まで
+  // - 一度スケジュールしたタスクは再スケジュールしない
   useEffect(() => {
     if (loading) return;
 
     const today = new Date();
-    // Check if today already has scheduled tasks
-    const todayTasks = scheduledTasks.filter(t => isSameDay(new Date(t.scheduledTime), today));
 
-    if (todayTasks.length === 0) {
-      // Attempt to schedule
-      const newSchedule = scheduleTasksForHoliday(today, tasks, events);
-      if (newSchedule.length > 0) {
-        console.log("Auto-scheduling for today:", newSchedule);
-        saveScheduledTasks([...scheduledTasks, ...newSchedule]);
-      }
+    // 未スケジュールのタスクがあれば、複数の休日に分配してスケジュール
+    const newSchedule = scheduleTasksAcrossHolidays(tasks, events, scheduledTasks, today);
+
+    if (newSchedule.length > 0) {
+      console.log("Auto-scheduling tasks across holidays:", newSchedule);
+      saveScheduledTasks([...scheduledTasks, ...newSchedule]);
     }
   }, [loading, tasks, events, scheduledTasks]);
 

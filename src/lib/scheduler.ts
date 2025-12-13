@@ -1,5 +1,5 @@
 import type { Task, ScheduledTask, WorkEvent } from '../types';
-import { isSameDay, getHours, setHours, setMinutes, startOfDay, subDays } from 'date-fns';
+import { isSameDay, getHours, setHours, setMinutes, startOfDay, subDays, addDays } from 'date-fns';
 
 /**
  * 指定日が休日（タスクをスケジュールできる日）かどうかを判定する
@@ -94,6 +94,8 @@ export function scheduleTasksForHoliday(
     for (const task of tasksToSchedule) {
         scheduledTasks.push({
             ...task,
+            id: crypto.randomUUID(), // ScheduledTask独自のID
+            taskId: task.id, // 元タスクへの参照
             scheduledTime: currentStartTime.getTime(),
             isCompleted: false
         });
@@ -104,4 +106,135 @@ export function scheduleTasksForHoliday(
     }
 
     return scheduledTasks;
+}
+
+/**
+ * 指定日以降の休日を検索する
+ * 
+ * @param startDate 検索開始日
+ * @param events 勤務イベントの配列
+ * @param scheduledTasks 既存のスケジュール済みタスク
+ * @param count 検索する休日の数
+ * @param includeStartDate 開始日を含めるかどうか
+ * @returns 休日の配列（最大count件）
+ */
+export function findNextHolidays(
+    startDate: Date,
+    events: WorkEvent[],
+    scheduledTasks: ScheduledTask[],
+    count: number,
+    includeStartDate: boolean = true
+): Date[] {
+    const holidays: Date[] = [];
+    let currentDate = startOfDay(startDate);
+
+    // 開始日を含めない場合は1日進める
+    if (!includeStartDate) {
+        currentDate = addDays(currentDate, 1);
+    }
+
+    // 最大90日先まで検索（無限ループ防止）
+    const maxDays = 90;
+    let daysSearched = 0;
+
+    while (holidays.length < count && daysSearched < maxDays) {
+        if (isHoliday(currentDate, events)) {
+            // この日にスケジュール済みのタスクが3件未満かチェック
+            const dayTasks = scheduledTasks.filter(t =>
+                isSameDay(new Date(t.scheduledTime), currentDate)
+            );
+
+            if (dayTasks.length < 3) {
+                holidays.push(new Date(currentDate));
+            }
+        }
+
+        currentDate = addDays(currentDate, 1);
+        daysSearched++;
+    }
+
+    return holidays;
+}
+
+/**
+ * タスクを複数の休日に分配してスケジュールする
+ * 
+ * ルール:
+ * - タスク追加日が休日 → その休日 + 次の休日にスケジュール
+ * - タスク追加日が休日ではない → 次の休日 + 次の次の休日にスケジュール
+ * - 各休日には最大3件まで
+ * - 優先度が高い順にスケジュール
+ * 
+ * @param tasks タスクプールのタスク
+ * @param events 勤務イベントの配列
+ * @param scheduledTasks 既存のスケジュール済みタスク
+ * @param today 今日の日付
+ * @returns 新しくスケジュールされたタスクの配列
+ */
+export function scheduleTasksAcrossHolidays(
+    tasks: Task[],
+    events: WorkEvent[],
+    scheduledTasks: ScheduledTask[],
+    today: Date
+): ScheduledTask[] {
+    // 既にスケジュール済みのタスクID（元タスクのID）を取得
+    // taskIdフィールドがない既存データの後方互換性のため、idをフォールバックとして使用
+    const scheduledTaskIds = new Set(scheduledTasks.map(t => t.taskId || t.id));
+
+    // まだスケジュールされていないタスクのみを対象にする
+    const unscheduledTasks = tasks.filter(t => !scheduledTaskIds.has(t.id));
+
+    if (unscheduledTasks.length === 0) {
+        return [];
+    }
+
+    // 優先度順にソート
+    const sortedTasks = [...unscheduledTasks].sort((a, b) => b.priority - a.priority);
+
+    // 今日が休日かどうかで対象の休日を決定
+    const isTodayHoliday = isHoliday(today, events);
+
+    // 対象の休日を取得（2件）
+    const targetHolidays = findNextHolidays(
+        today,
+        events,
+        scheduledTasks,
+        2,
+        isTodayHoliday // 今日が休日なら今日を含める
+    );
+
+    if (targetHolidays.length === 0) {
+        return [];
+    }
+
+    const newScheduledTasks: ScheduledTask[] = [];
+    let taskIndex = 0;
+
+    for (const holiday of targetHolidays) {
+        // この日の既存スケジュール数を確認
+        const existingDayTasks = scheduledTasks.filter(t =>
+            isSameDay(new Date(t.scheduledTime), holiday)
+        );
+
+        // この日に追加できる残り枠
+        const slotsAvailable = 3 - existingDayTasks.length;
+
+        if (slotsAvailable <= 0) continue;
+
+        // この日にスケジュールするタスクを取得
+        const tasksForThisDay = sortedTasks.slice(taskIndex, taskIndex + slotsAvailable);
+
+        if (tasksForThisDay.length === 0) break;
+
+        // この日のスケジュールを作成
+        const daySchedule = scheduleTasksForHoliday(holiday, tasksForThisDay, events);
+        newScheduledTasks.push(...daySchedule);
+
+        taskIndex += tasksForThisDay.length;
+
+        // 全タスクをスケジュールした場合は終了
+        if (taskIndex >= sortedTasks.length) break;
+    }
+
+    return newScheduledTasks;
 }
