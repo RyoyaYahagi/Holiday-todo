@@ -329,6 +329,20 @@ export const supabaseDb = {
     },
 
     /**
+     * 複数のスケジュール済みタスクを一括削除
+     */
+    async deleteScheduledTasks(ids: string[]): Promise<void> {
+        if (ids.length === 0) return;
+
+        const { error } = await supabase
+            .from('scheduled_tasks')
+            .delete()
+            .in('id', ids);
+
+        if (error) throw error;
+    },
+
+    /**
      * データをエクスポート
      */
     async exportData(): Promise<string> {

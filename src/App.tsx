@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSupabase } from './hooks/useSupabase';
 import { useAuth } from './contexts/AuthContext';
 import { useNotifications } from './hooks/useNotifications';
@@ -7,7 +7,6 @@ import { TaskForm } from './components/TaskForm';
 import { Calendar } from './components/Calendar';
 import { Settings } from './components/Settings';
 import { Login } from './components/Login';
-import { scheduleTasksAcrossHolidays } from './lib/scheduler';
 
 function App() {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -23,7 +22,6 @@ function App() {
     updateSettings,
     saveEvents,
     saveScheduledTasks,
-    deleteScheduledTask,
     exportData,
     importData
   } = useSupabase();
@@ -40,26 +38,6 @@ function App() {
     );
     saveScheduledTasks(updated);
   };
-
-  // Auto-scheduler logic:
-  // タスクを複数の休日に分配してスケジュールする
-  // - 今日が休日 → 今日 + 次の休日
-  // - 今日が休日ではない → 次の休日 + 次の次の休日
-  // - 各休日には最大3件まで
-  // - 一度スケジュールしたタスクは再スケジュールしない
-  useEffect(() => {
-    if (loading || authLoading) return;
-
-    const today = new Date();
-
-    // 未スケジュールのタスクがあれば、複数の休日に分配してスケジュール
-    const newSchedule = scheduleTasksAcrossHolidays(tasks, events, scheduledTasks, today);
-
-    if (newSchedule.length > 0) {
-      console.log("Auto-scheduling tasks across holidays:", newSchedule);
-      saveScheduledTasks([...scheduledTasks, ...newSchedule]);
-    }
-  }, [loading, authLoading, tasks, events, scheduledTasks]);
 
   // 認証読み込み中
   if (authLoading) {
@@ -98,7 +76,6 @@ function App() {
               scheduledTasks={scheduledTasks}
               onDelete={deleteTask}
               onComplete={completeTask}
-              onDeleteScheduled={deleteScheduledTask}
             />
           </div>
         )}
@@ -151,4 +128,3 @@ function App() {
 }
 
 export default App;
-
