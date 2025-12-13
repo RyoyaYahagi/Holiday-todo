@@ -1,0 +1,10 @@
+# Project Rules
+
+This project uses specific TypeScript development rules.
+Please refer to and follow the guidelines in @TYPESCRIPT_RULES.md.
+
+Key areas:
+- Core Principles (Fail-fast, Real code)
+- Coding Rules (Path handling, Style, Type Safety)
+- Testing Rules (Japanese descriptions, structure)
+- Reporting Rules (Japanese reports)
