@@ -74,7 +74,7 @@ export const Settings: React.FC<SettingsProps> = ({
         setWebhookTestStatus('送信中...');
         const result = await sendDiscordNotification(
             settings.discordWebhookUrl,
-            [{ id: 'test', title: 'テストタスク', priority: 5, createdAt: 0, scheduledTime: Date.now(), isCompleted: false }],
+            [{ id: 'test', taskId: 'test', title: 'テストタスク', priority: 5, createdAt: 0, scheduledTime: Date.now(), isCompleted: false }],
             '【テスト通知】これはテスト通知です。'
         );
         setWebhookTestStatus(result ? '✅ 送信成功！Discordを確認してください' : '❌ 送信失敗 (URLを確認してください)');
