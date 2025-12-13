@@ -97,6 +97,7 @@ function App() {
               onSaveEvents={saveEvents}
               onExport={exportData}
               onImport={importData}
+              onNavigateToCalendar={() => setActiveTab('calendar')}
             />
           </div>
         )}

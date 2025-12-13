@@ -9,6 +9,7 @@ interface SettingsProps {
     onSaveEvents: (events: WorkEvent[]) => void;
     onExport: () => Promise<string>;
     onImport: (json: string) => Promise<void>;
+    onNavigateToCalendar?: () => void;
 }
 
 export const Settings: React.FC<SettingsProps> = ({
@@ -16,7 +17,8 @@ export const Settings: React.FC<SettingsProps> = ({
     onUpdateSettings,
     onSaveEvents,
     onExport,
-    onImport
+    onImport,
+    onNavigateToCalendar
 }) => {
     const [importStatus, setImportStatus] = useState<string>('');
     const [webhookTestStatus, setWebhookTestStatus] = useState<string>('');
@@ -44,22 +46,21 @@ export const Settings: React.FC<SettingsProps> = ({
                     });
                     console.log('イベントタイプ別:', typeCount);
 
-                    const statusMessage = `✅ 成功: ${events.length}件のイベントを読み込みました（夜勤${typeCount['夜勤']}件, 日勤${typeCount['日勤']}件, 休み${typeCount['休み']}件, その他${typeCount['その他']}件）`;
-
                     onSaveEvents(events);
 
-                    // 親コンポーネントの再レンダリング後にステータスを設定
-                    setTimeout(() => {
-                        setImportStatus(statusMessage);
-                    }, 100);
+                    // 読み込み成功後、カレンダー画面に遷移してデータを確認できるようにする
+                    if (onNavigateToCalendar) {
+                        onNavigateToCalendar();
+                    }
                 } catch (err) {
                     console.error('ICSパースエラー:', err);
-                    setImportStatus(`❌ エラー: ファイルの読み込みに失敗しました - ${err instanceof Error ? err.message : '不明なエラー'}`);
+                    setImportStatus('❌ エラー: ファイルの読み込みに失敗しました');
                 }
             }
         };
         reader.onerror = () => {
             console.error('FileReaderエラー:', reader.error);
+            alert('ファイルの読み取りに失敗しました');
             setImportStatus('❌ エラー: ファイルの読み取りに失敗しました');
         };
         reader.readAsText(file);
