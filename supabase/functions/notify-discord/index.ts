@@ -57,6 +57,7 @@ async function sendDiscordNotification(
     content: string
 ): Promise<boolean> {
     try {
+        console.log('[notify-discord] Discordに送信:', content.substring(0, 100))
         const response = await fetch(webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -65,6 +66,7 @@ async function sendDiscordNotification(
                 username: 'Holiday Todo App',
             }),
         })
+        console.log('[notify-discord] Discord応答:', response.status)
         return response.ok
     } catch (error) {
         console.error('Discord通知送信エラー:', error)
@@ -73,25 +75,44 @@ async function sendDiscordNotification(
 }
 
 /**
- * 時刻をHH:mm形式で取得（JST）
+ * 現在のJST時刻をHH:mm形式で取得
  */
-function getCurrentTimeHHMM(): string {
+function getJSTTimeHHMM(): string {
     const now = new Date()
-    // JSTに変換（UTC+9）
-    const jstOffset = 9 * 60 * 60 * 1000
-    const jstTime = new Date(now.getTime() + jstOffset)
-    const hours = jstTime.getUTCHours().toString().padStart(2, '0')
-    const minutes = jstTime.getUTCMinutes().toString().padStart(2, '0')
-    return `${hours}:${minutes}`
+    // UTC時刻に9時間を加算してJSTを計算
+    const jstHours = (now.getUTCHours() + 9) % 24
+    const jstMinutes = now.getUTCMinutes()
+    return `${jstHours.toString().padStart(2, '0')}:${jstMinutes.toString().padStart(2, '0')}`
 }
 
 /**
- * 現在時刻をJSTで取得
+ * 現在のJST日付をYYYY-MM-DD形式で取得
  */
-function getJSTNow(): Date {
+function getJSTDateStr(): string {
     const now = new Date()
-    const jstOffset = 9 * 60 * 60 * 1000
-    return new Date(now.getTime() + jstOffset)
+    // UTC時刻に9時間を加算してJSTを計算
+    const jstHours = now.getUTCHours() + 9
+    const jstDate = new Date(now)
+    if (jstHours >= 24) {
+        jstDate.setUTCDate(jstDate.getUTCDate() + 1)
+    }
+    return jstDate.toISOString().split('T')[0]
+}
+
+/**
+ * 明日のJST日付をYYYY-MM-DD形式で取得
+ */
+function getJSTTomorrowDateStr(): string {
+    const now = new Date()
+    const jstHours = now.getUTCHours() + 9
+    const jstDate = new Date(now)
+    // 今日の日付を計算
+    if (jstHours >= 24) {
+        jstDate.setUTCDate(jstDate.getUTCDate() + 1)
+    }
+    // 明日に進める
+    jstDate.setUTCDate(jstDate.getUTCDate() + 1)
+    return jstDate.toISOString().split('T')[0]
 }
 
 Deno.serve(async (req) => {
@@ -105,11 +126,12 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    const jstNow = getJSTNow()
-    const currentHHMM = getCurrentTimeHHMM()
-    const currentMinute = jstNow.getUTCMinutes()
+    const now = new Date()
+    const currentJSTTime = getJSTTimeHHMM()
+    const todayJST = getJSTDateStr()
+    const tomorrowJST = getJSTTomorrowDateStr()
 
-    console.log(`[notify-discord] 実行開始: ${jstNow.toISOString()} (JST ${currentHHMM})`)
+    console.log(`[notify-discord] 実行開始: UTC=${now.toISOString()}, JST時刻=${currentJSTTime}, JST今日=${todayJST}, JST明日=${tomorrowJST}`)
 
     // 全ユーザーの設定を取得
     const { data: allSettings, error: settingsError } = await supabase
@@ -121,19 +143,25 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: settingsError.message }), { status: 500 })
     }
 
+    console.log(`[notify-discord] 設定取得: ${allSettings?.length || 0}件`)
+
     const notifiedCount = { dayBefore: 0, taskReminder: 0 }
 
     for (const settings of (allSettings as SettingsRow[]) || []) {
-        if (!settings.discord_webhook_url) continue
+        console.log(`[notify-discord] ユーザー処理: ${settings.user_id}, webhook=${settings.discord_webhook_url ? 'あり' : 'なし'}`)
+
+        if (!settings.discord_webhook_url) {
+            console.log('[notify-discord] Webhook URLなし、スキップ')
+            continue
+        }
 
         const userId = settings.user_id
 
         // 1) 前日通知のチェック
-        if (settings.notify_on_day_before && settings.notify_day_before_time === currentHHMM) {
-            // 明日の日付
-            const tomorrow = new Date(jstNow)
-            tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
-            const tomorrowStr = tomorrow.toISOString().split('T')[0]
+        console.log(`[notify-discord] 前日通知チェック: enabled=${settings.notify_on_day_before}, 設定時刻=${settings.notify_day_before_time}, 現在時刻=${currentJSTTime}`)
+
+        if (settings.notify_on_day_before && settings.notify_day_before_time === currentJSTTime) {
+            console.log('[notify-discord] 前日通知時刻一致！明日の休日チェック開始')
 
             // ユーザーのイベントを取得
             const { data: events } = await supabase
@@ -141,74 +169,93 @@ Deno.serve(async (req) => {
                 .select('user_id, event_type, start_time')
                 .eq('user_id', userId)
 
-            if (isHoliday(tomorrow, events as EventRow[] || [])) {
-                // 明日の未完了タスクを取得
-                const { data: tasks } = await supabase
+            console.log(`[notify-discord] イベント取得: ${events?.length || 0}件`)
+
+            // 明日の日付で休日判定
+            const tomorrowDate = new Date(tomorrowJST + 'T00:00:00Z')
+            const isTomorrowHoliday = isHoliday(tomorrowDate, events as EventRow[] || [])
+            console.log(`[notify-discord] 明日(${tomorrowJST})は休日: ${isTomorrowHoliday}`)
+
+            if (isTomorrowHoliday) {
+                // 明日の未完了タスクを取得（DBはUTCで保存されているが、日付文字列で範囲検索）
+                const { data: tasks, error: tasksError } = await supabase
                     .from('scheduled_tasks')
                     .select('id, title, priority, scheduled_time, is_completed')
                     .eq('user_id', userId)
                     .eq('is_completed', false)
-                    .gte('scheduled_time', `${tomorrowStr}T00:00:00`)
-                    .lt('scheduled_time', `${tomorrowStr}T23:59:59`)
+                    .gte('scheduled_time', `${tomorrowJST}T00:00:00`)
+                    .lt('scheduled_time', `${tomorrowJST}T23:59:59`)
                     .order('scheduled_time', { ascending: true })
+
+                console.log(`[notify-discord] 明日のタスク: ${tasks?.length || 0}件, error=${tasksError?.message || 'なし'}`)
 
                 if (tasks && tasks.length > 0) {
                     const taskLines = tasks.map(t => {
                         const time = new Date(t.scheduled_time)
-                        const hh = time.getUTCHours().toString().padStart(2, '0')
-                        const mm = time.getUTCMinutes().toString().padStart(2, '0')
-                        return `・${hh}:${mm} - ${t.title} (優先度: ${t.priority})`
+                        // JSTに変換して表示
+                        const jstH = (time.getUTCHours() + 9) % 24
+                        const jstM = time.getUTCMinutes()
+                        return `・${jstH.toString().padStart(2, '0')}:${jstM.toString().padStart(2, '0')} - ${t.title} (優先度: ${t.priority})`
                     }).join('\n')
 
-                    await sendDiscordNotification(
+                    const sent = await sendDiscordNotification(
                         settings.discord_webhook_url,
                         `📅 **明日の休日スケジュール**\n${taskLines}`
                     )
-                    notifiedCount.dayBefore++
+                    if (sent) notifiedCount.dayBefore++
                 }
             }
         }
 
         // 2) タスク開始前通知のチェック
+        console.log(`[notify-discord] タスク通知チェック: enabled=${settings.notify_before_task}, 分前=${settings.notify_before_task_minutes}`)
+
         if (settings.notify_before_task && settings.notify_before_task_minutes > 0) {
-            // N分後のタスクを探す
-            const targetTime = new Date(jstNow)
-            targetTime.setUTCMinutes(targetTime.getUTCMinutes() + settings.notify_before_task_minutes)
+            // 現在時刻からN分後のタスクを探す
+            const targetTime = new Date(now.getTime() + settings.notify_before_task_minutes * 60 * 1000)
+            const targetJSTH = (targetTime.getUTCHours() + 9) % 24
+            const targetJSTM = targetTime.getUTCMinutes()
 
-            // 同じ分のタスクを検索（秒は無視）
-            const targetMinute = targetTime.getUTCMinutes()
-            const targetHour = targetTime.getUTCHours()
-            const targetDateStr = targetTime.toISOString().split('T')[0]
+            console.log(`[notify-discord] 対象時刻: ${targetJSTH}:${targetJSTM} (${settings.notify_before_task_minutes}分後)`)
 
+            // 今日の未完了タスクを全て取得
             const { data: tasks } = await supabase
                 .from('scheduled_tasks')
                 .select('id, title, priority, scheduled_time, is_completed, notified_at')
                 .eq('user_id', userId)
                 .eq('is_completed', false)
-                .gte('scheduled_time', `${targetDateStr}T00:00:00`)
-                .lte('scheduled_time', `${targetDateStr}T23:59:59`)
+                .gte('scheduled_time', `${todayJST}T00:00:00`)
+                .lte('scheduled_time', `${todayJST}T23:59:59`)
+
+            console.log(`[notify-discord] 今日のタスク: ${tasks?.length || 0}件`)
 
             for (const task of (tasks as ScheduledTaskRow[]) || []) {
                 const taskTime = new Date(task.scheduled_time)
-                const taskHour = taskTime.getUTCHours()
-                const taskMinute = taskTime.getUTCMinutes()
+                // タスク時刻をJSTに変換
+                const taskJSTH = (taskTime.getUTCHours() + 9) % 24
+                const taskJSTM = taskTime.getUTCMinutes()
+
+                console.log(`[notify-discord] タスク「${task.title}」: ${taskJSTH}:${taskJSTM}, 通知済み=${!!task.notified_at}`)
 
                 // 時間と分が一致するか確認
-                if (taskHour === targetHour && taskMinute === targetMinute) {
+                if (taskJSTH === targetJSTH && taskJSTM === targetJSTM) {
                     // 既に通知済みでないか確認
                     if (!task.notified_at) {
-                        await sendDiscordNotification(
+                        console.log('[notify-discord] タスク通知送信!')
+                        const sent = await sendDiscordNotification(
                             settings.discord_webhook_url,
                             `⏰ **タスク開始 ${settings.notify_before_task_minutes}分前**\n・${task.title} (優先度: ${task.priority})`
                         )
 
-                        // 通知済みとしてマーク
-                        await supabase
-                            .from('scheduled_tasks')
-                            .update({ notified_at: new Date().toISOString() })
-                            .eq('id', task.id)
+                        if (sent) {
+                            // 通知済みとしてマーク
+                            await supabase
+                                .from('scheduled_tasks')
+                                .update({ notified_at: new Date().toISOString() })
+                                .eq('id', task.id)
 
-                        notifiedCount.taskReminder++
+                            notifiedCount.taskReminder++
+                        }
                     }
                 }
             }
@@ -220,9 +267,13 @@ Deno.serve(async (req) => {
     return new Response(
         JSON.stringify({
             ok: true,
-            timestamp: jstNow.toISOString(),
+            utcTime: now.toISOString(),
+            jstTime: currentJSTTime,
+            jstToday: todayJST,
+            jstTomorrow: tomorrowJST,
             notified: notifiedCount,
         }),
         { headers: { 'Content-Type': 'application/json' } }
     )
 })
+
