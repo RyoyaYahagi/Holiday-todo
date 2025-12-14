@@ -136,14 +136,7 @@ function App() {
 
         {activeTab === 'settings' && (
           <div className="tab-content fade-in">
-            <Settings
-              settings={settings}
-              onUpdateSettings={updateSettings}
-              onSaveEvents={saveEvents}
-              onExport={exportData}
-              onImport={importData}
-              onNavigateToCalendar={() => setActiveTab('calendar')}
-            />
+
             <Settings
               settings={settings}
               onUpdateSettings={updateSettings}
