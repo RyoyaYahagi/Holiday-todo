@@ -670,4 +670,197 @@ input[type="file"] {
   color: white;
   border-color: #339af0;
   font-weight: bold;
+}/* --- UI Refresh Styles --- */
+
+/* FAB (Floating Action Button) */
+.fab-container {
+    position: fixed;
+    bottom: calc(4.5rem + var(--safe-area-bottom));
+    right: 1.5rem;
+    z-index: 90;
 }
+
+.fab-button {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #007aff;
+    /* iOS blue-ish */
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
+    font-size: 2.5rem;
+    font-weight: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.2s;
+    line-height: 1;
+    padding-bottom: 4px;
+    /* Center vertical align adjustment */
+}
+
+.fab-button:active {
+    transform: scale(0.95);
+    background: #0063ce;
+}
+
+/* Modal */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: flex-end;
+    /* Bottom sheet style or center? User said "pop up", center or bottom is fine. Let's do center for now or bottom sheet on mobile. */
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease-out;
+    padding: 1rem;
+}
+
+.modal-content {
+    background: white;
+    width: 100%;
+    max-width: 500px;
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    animation: slideUp 0.3s ease-out;
+    margin-bottom: env(safe-area-inset-bottom);
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.btn-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #999;
+    cursor: pointer;
+    padding: 0.5rem;
+}
+
+/* Refined Task List Styles to match image */
+.task-list-clean {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    background: white;
+    /* Card-like container or just clean list? */
+}
+
+.task-item-clean {
+    display: flex;
+    align-items: flex-start;
+    padding: 1rem;
+    border-bottom: 1px solid #f0f0f0;
+    background: white;
+    transition: background 0.2s;
+}
+
+.task-item-clean:last-child {
+    border-bottom: none;
+}
+
+.check-circle {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid #ddd;
+    margin-right: 12px;
+    margin-top: 2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+
+.check-circle.checked {
+    background: #ccc;
+    border-color: #ccc;
+    color: white;
+}
+
+.check-circle::after {
+    content: "✓";
+    font-size: 16px;
+    color: white;
+    display: none;
+}
+
+.check-circle.checked::after {
+    display: block;
+}
+
+.task-content-clean {
+    flex: 1;
+    min-width: 0;
+    /* Enable truncation */
+}
+
+.task-title-clean {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 4px;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.task-title-clean.completed {
+    text-decoration: line-through;
+    color: #999;
+}
+
+.task-meta-clean {
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.date-text {
+    color: #888;
+}
+
+.date-text.overdue {
+    color: #ff3b30;
+    font-weight: 600;
+}
+
+.date-text.today {
+    color: #f39c12;
+    font-weight: 600;
+}
+
+/* Hide TaskForm in main view if needed, but we will control via React state */

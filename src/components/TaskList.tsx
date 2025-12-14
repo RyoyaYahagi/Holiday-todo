@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Task, ScheduledTask, Priority } from '../types';
-import { format, isSameDay, isAfter, startOfDay } from 'date-fns';
+import { format, isBefore, isToday, isTomorrow, isYesterday, startOfDay } from 'date-fns';
+import { ja } from 'date-fns/locale';
 
 interface TaskListProps {
     tasks: Task[];
@@ -11,27 +12,26 @@ interface TaskListProps {
     maxPriority?: number;
 }
 
-export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDelete, onComplete, onUpdatePriority, maxPriority = 5 }) => {
-    const today = startOfDay(new Date());
+// onUpdatePriority, maxPriority は将来的に詳細画面等で使用するが、現在はリスト表示で使用しないためリントエラー回避
+export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDelete, onComplete }) => {
+    // 日付フォーマッター
+    const getTaskDateLabel = (date: Date) => {
+        if (isYesterday(date)) return <span className="date-text overdue">昨日 (期限切れ)</span>;
+        if (isToday(date)) return <span className="date-text today">今日 {format(date, 'HH:mm')}</span>;
+        if (isTomorrow(date)) return <span className="date-text">明日 {format(date, 'HH:mm')}</span>;
+        if (isBefore(date, startOfDay(new Date()))) return <span className="date-text overdue">{format(date, 'M月d日')} (期限切れ)</span>;
+        return <span className="date-text">{format(date, 'M月d日(eee)', { locale: ja })}</span>;
+    };
 
-    // 今日のスケジュール済みタスク
-    const todayScheduled = scheduledTasks
-        .filter(st => isSameDay(new Date(st.scheduledTime), today))
-        .sort((a, b) => a.scheduledTime - b.scheduledTime);
+    // 1. スケジュール済みタスク（時系列順）
+    const sortedScheduled = [...scheduledTasks].sort((a, b) => a.scheduledTime - b.scheduledTime);
 
-    // 明日以降のスケジュール済みタスク
-    const futureScheduled = scheduledTasks
-        .filter(st => isAfter(startOfDay(new Date(st.scheduledTime)), today))
-        .sort((a, b) => a.scheduledTime - b.scheduledTime);
-
-    // スケジュール済みタスクのtaskIdセット（元タスクのID）
+    // 2. 未スケジュール（プール）タスク
     const scheduledTaskIds = new Set(scheduledTasks.map(st => st.taskId));
-
-    // 未スケジュールのタスクのみをプールに表示
     const unscheduledTasks = tasks.filter(t => !scheduledTaskIds.has(t.id));
 
-    // 優先度順にソート
-    const sortedUnscheduledTasks = [...unscheduledTasks].sort((a, b) => {
+    // プールは優先度順 -> 作成順
+    const sortedUnscheduled = [...unscheduledTasks].sort((a, b) => {
         if (b.priority !== a.priority) return b.priority - a.priority;
         return b.createdAt - a.createdAt;
     });
@@ -40,125 +40,75 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDel
         return (
             <div className="empty-state">
                 <p>📝 タスクがありません</p>
-                <p className="hint">上のフォームからタスクを追加してください</p>
+                <p className="hint">右下の＋ボタンからタスクを追加してください</p>
             </div>
         );
     }
 
     return (
         <div className="task-list-container">
-            {/* Today's Scheduled Tasks */}
-            {todayScheduled.length > 0 && (
-                <div className="scheduled-section">
-                    <h4>📅 今日のスケジュール</h4>
-                    <ul className="task-list scheduled">
-                        {todayScheduled.map(task => (
-                            <li key={task.id} className={`task-item ${task.isCompleted ? 'completed' : ''}`}>
-                                <button
-                                    className={`btn-check ${task.isCompleted ? 'checked' : ''}`}
-                                    onClick={() => onComplete(task.id)}
-                                    aria-label={task.isCompleted ? "完了済み" : "完了にする"}
-                                >
-                                    {task.isCompleted ? '✓' : '○'}
-                                </button>
-                                <div className="task-info">
-                                    <span className="task-time">{format(new Date(task.scheduledTime), 'HH:mm')}</span>
-                                    <select
-                                        className={`priority-badge p-${Math.min(task.priority, maxPriority)}`}
-                                        value={Math.min(task.priority, maxPriority)}
-                                        onChange={(e) => onUpdatePriority(task.taskId, parseInt(e.target.value) as Priority)}
-                                        style={{ border: 'none', cursor: 'pointer', outline: 'none' }}
-                                    >
-                                        {Array.from({ length: maxPriority }, (_, i) => i + 1).map(p => <option key={p} value={p} style={{ color: 'black' }}>P{p}</option>)}
-                                    </select>
-                                    <span className={`task-title ${task.isCompleted ? 'strikethrough' : ''}`}>{task.title}</span>
-                                </div>
-                                <button
-                                    className="btn-delete"
-                                    onClick={() => onDelete(task.taskId)}
-                                    aria-label="削除"
-                                >
-                                    ×
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            )}
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem', paddingLeft: '0.5rem' }}>タスク一覧</h2>
 
-            {/* Future Scheduled Tasks */}
-            {futureScheduled.length > 0 && (
-                <div className="scheduled-section">
-                    <h4>📆 予定されているタスク</h4>
-                    <ul className="task-list scheduled">
-                        {futureScheduled.map(task => (
-                            <li key={task.id} className={`task-item ${task.isCompleted ? 'completed' : ''}`}>
-                                <button
-                                    className={`btn-check ${task.isCompleted ? 'checked' : ''}`}
-                                    onClick={() => onComplete(task.id)}
-                                    aria-label={task.isCompleted ? "完了済み" : "完了にする"}
-                                >
-                                    {task.isCompleted ? '✓' : '○'}
-                                </button>
-                                <div className="task-info">
-                                    <span className="task-time">{format(new Date(task.scheduledTime), 'M/d HH:mm')}</span>
-                                    <select
-                                        className={`priority-badge p-${Math.min(task.priority, maxPriority)}`}
-                                        value={Math.min(task.priority, maxPriority)}
-                                        onChange={(e) => onUpdatePriority(task.taskId, parseInt(e.target.value) as Priority)}
-                                        style={{ border: 'none', cursor: 'pointer', outline: 'none' }}
-                                    >
-                                        {Array.from({ length: maxPriority }, (_, i) => i + 1).map(p => <option key={p} value={p} style={{ color: 'black' }}>P{p}</option>)}
-                                    </select>
-                                    <span className={`task-title ${task.isCompleted ? 'strikethrough' : ''}`}>{task.title}</span>
-                                </div>
-                                <button
-                                    className="btn-delete"
-                                    onClick={() => onDelete(task.taskId)}
-                                    aria-label="削除"
-                                >
-                                    ×
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            )}
+            <ul className="task-list-clean">
+                {/* スケジュール済みタスク */}
+                {sortedScheduled.map(task => (
+                    <li key={task.id} className="task-item-clean">
+                        <div
+                            className={`check-circle ${task.isCompleted ? 'checked' : ''}`}
+                            onClick={() => onComplete(task.id)}
+                        />
+                        <div className="task-content-clean">
+                            <div className={`task-title-clean ${task.isCompleted ? 'completed' : ''}`}>
+                                {task.title}
+                            </div>
+                            <div className="task-meta-clean">
+                                {getTaskDateLabel(new Date(task.scheduledTime))}
+                            </div>
+                        </div>
+                        {/* 優先度変更用（隠し機能的、あるいは控えめに配置） */}
+                        {/* 画像にはないので一旦非表示にするか、デバッグ用に残すならここ */}
+                        {/* ここでは画像のシンプルさを優先して削除するが、機能維持のため別の場所(詳細など)が必要。
+                             今回はユーザー要望「UIをこのように」を最優先し、一旦隠す。ただし削除機能は必要。 */}
+                        <button
+                            className="btn-delete"
+                            onClick={() => onDelete(task.taskId)}
+                            aria-label="削除"
+                            style={{ marginLeft: 'auto', fontSize: '1.2rem', color: '#ccc' }}
+                        >
+                            ×
+                        </button>
+                    </li>
+                ))}
 
-            {/* Task Pool - Only unscheduled tasks */}
-            <div className="pool-section">
-                <h4>📋 タスクプール（未スケジュール）</h4>
-                <p className="hint">休日に自動的にスケジューリングされます（優先度が高い順に最大3件/日）</p>
+                {/* プールタスク（区切り線を入れるか、そのまま続けるか。フラットに見せるなら続ける） */}
+                {sortedUnscheduled.map(task => (
+                    <li key={task.id} className="task-item-clean">
+                        <div className="check-circle" style={{ borderColor: '#eee', cursor: 'default' }} /> {/* プールはまだ完了できない？ -> できるようにすべきだが、スケジュール前なので */}
+                        {/* 元のロジックではプールタスクは完了状態を持たない（Task型にはisCompletedがない）。
+                            完了するにはスケジュールされる必要があるか、Task型にisCompletedを追加する必要がある。
+                            現状の仕様ではプールタスクは「未完了」前提。 */}
 
-                {sortedUnscheduledTasks.length === 0 ? (
-                    <p className="no-tasks">プールにタスクはありません</p>
-                ) : (
-                    <ul className="task-list">
-                        {sortedUnscheduledTasks.map(task => (
-                            <li key={task.id} className="task-item">
-                                <div className="task-info">
-                                    <select
-                                        className={`priority-badge p-${Math.min(task.priority, maxPriority)}`}
-                                        value={Math.min(task.priority, maxPriority)}
-                                        onChange={(e) => onUpdatePriority(task.id, parseInt(e.target.value) as Priority)}
-                                        style={{ border: 'none', cursor: 'pointer', outline: 'none' }}
-                                    >
-                                        {Array.from({ length: maxPriority }, (_, i) => i + 1).map(p => <option key={p} value={p} style={{ color: 'black' }}>P{p}</option>)}
-                                    </select>
-                                    <span className="task-title">{task.title}</span>
-                                </div>
-                                <button
-                                    className="btn-delete"
-                                    onClick={() => onDelete(task.id)}
-                                    aria-label="削除"
-                                >
-                                    ×
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </div>
+                        <div className="task-content-clean">
+                            <div className="task-title-clean">
+                                {task.title}
+                            </div>
+                            <div className="task-meta-clean">
+                                <span className="date-text" style={{ fontSize: '0.8rem', color: '#999' }}>
+                                    未定 (P{task.priority})
+                                </span>
+                            </div>
+                        </div>
+                        <button
+                            className="btn-delete"
+                            onClick={() => onDelete(task.id)}
+                            aria-label="削除"
+                            style={{ marginLeft: 'auto', fontSize: '1.2rem', color: '#ccc' }}
+                        >
+                            ×
+                        </button>
+                    </li>
+                ))}
+            </ul>
         </div>
     );
 };

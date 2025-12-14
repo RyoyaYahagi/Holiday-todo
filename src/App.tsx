@@ -8,6 +8,8 @@ import { Calendar } from './components/Calendar';
 import { Settings } from './components/Settings';
 import { Login } from './components/Login';
 
+import { Modal } from './components/Modal';
+
 function App() {
   const { user, loading: authLoading, signOut } = useAuth();
 
@@ -28,6 +30,7 @@ function App() {
   } = useSupabase();
 
   const [activeTab, setActiveTab] = useState<'tasks' | 'calendar' | 'settings'>('tasks');
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
 
   // Activate notifications hook
   useNotifications(settings, tasks, events, scheduledTasks, saveScheduledTasks);
@@ -77,8 +80,6 @@ function App() {
       <main className="app-content">
         {activeTab === 'tasks' && (
           <div className="tab-content fade-in">
-            <TaskForm onAdd={addTask} maxPriority={settings.maxPriority} />
-            <div className="section-divider"></div>
             <TaskList
               tasks={tasks}
               scheduledTasks={scheduledTasks}
@@ -87,8 +88,31 @@ function App() {
               onUpdatePriority={handlePriorityChange}
               maxPriority={settings.maxPriority}
             />
+
+            {/* FAB for adding tasks */}
+            <div className="fab-container">
+              <button className="fab-button" onClick={() => setIsTaskModalOpen(true)}>
+                <span>+</span>
+              </button>
+            </div>
+
+            {/* Task Add Modal */}
+            <Modal
+              isOpen={isTaskModalOpen}
+              onClose={() => setIsTaskModalOpen(false)}
+              title="新規タスク追加"
+            >
+              <TaskForm
+                onAdd={async (title, priority) => {
+                  await addTask(title, priority);
+                  setIsTaskModalOpen(false);
+                }}
+                maxPriority={settings.maxPriority}
+              />
+            </Modal>
           </div>
         )}
+
 
         {activeTab === 'calendar' && (
           <div className="tab-content fade-in">
