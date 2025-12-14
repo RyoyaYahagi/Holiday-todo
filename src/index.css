@@ -167,6 +167,22 @@ body {
   transform: scale(0.98);
 }
 
+/* 設定画面の保存ボタン用スタイル */
+.settings-section .action-buttons {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-top: 1.5rem;
+}
+
+.settings-section .action-buttons .btn-primary,
+.settings-section .action-buttons .btn-secondary {
+  width: auto;
+}
+
 .btn-secondary {
   background: #eef2f7;
   color: var(--primary-dark);

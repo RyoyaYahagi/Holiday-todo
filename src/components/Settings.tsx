@@ -302,7 +302,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         <button onClick={handleReset} className="btn-secondary" style={{ backgroundColor: '#f5f5f5', padding: '0.5rem 1rem' }}>
                             ↩️ 元に戻す
                         </button>
-                        <button onClick={handleSave} className="btn-primary" style={{ padding: '0.5rem 1.5rem' }}>
+                        <button onClick={handleSave} className="btn-primary" style={{ padding: '0.5rem 1.5rem', width: 'auto' }}>
                             💾 保存
                         </button>
                     </div>
@@ -392,7 +392,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         <button onClick={handleReset} className="btn-secondary" style={{ backgroundColor: '#f5f5f5' }}>
                             ↩️ 元に戻す
                         </button>
-                        <button onClick={handleSave} className="btn-primary" style={{ padding: '0.8rem 2rem', fontSize: '1.1rem' }}>
+                        <button onClick={handleSave} className="btn-primary" style={{ padding: '0.8rem 2rem', fontSize: '1.1rem', width: 'auto' }}>
                             💾 設定を保存する
                         </button>
                     </div>
