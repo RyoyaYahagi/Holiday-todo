@@ -18,6 +18,7 @@ function App() {
     settings,
     loading,
     addTask,
+    updateTask,
     deleteTask,
     updateSettings,
     saveEvents,
@@ -37,6 +38,13 @@ function App() {
       t.id === id ? { ...t, isCompleted: !t.isCompleted } : t
     );
     saveScheduledTasks(updated);
+  };
+
+  const handlePriorityChange = async (taskId: string, newPriority: 1 | 2 | 3 | 4 | 5) => {
+    const targetTask = tasks.find(t => t.id === taskId);
+    if (targetTask) {
+      await updateTask({ ...targetTask, priority: newPriority });
+    }
   };
 
   // 認証読み込み中
@@ -76,6 +84,7 @@ function App() {
               scheduledTasks={scheduledTasks}
               onDelete={deleteTask}
               onComplete={completeTask}
+              onUpdatePriority={handlePriorityChange}
             />
           </div>
         )}

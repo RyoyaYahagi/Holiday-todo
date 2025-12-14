@@ -68,7 +68,16 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks }) =>
                 </div>
                 <div className="day-content">
                     {dayTasks.map(task => (
-                        <div key={task.id} className="mini-task">
+                        <div
+                            key={task.id}
+                            className={`mini-task ${task.isCompleted ? 'completed' : ''}`}
+                            style={{
+                                textDecoration: task.isCompleted ? 'line-through' : 'none',
+                                opacity: task.isCompleted ? 0.6 : 1,
+                                color: task.isCompleted ? '#888' : 'inherit'
+                            }}
+                        >
+                            {task.isCompleted && '✓ '}
                             {format(new Date(task.scheduledTime), 'HH:mm')} {task.title}
                         </div>
                     ))}

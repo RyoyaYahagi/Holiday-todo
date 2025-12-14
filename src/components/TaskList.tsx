@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Task, ScheduledTask } from '../types';
+import type { Task, ScheduledTask, Priority } from '../types';
 import { format, isSameDay, isAfter, startOfDay } from 'date-fns';
 
 interface TaskListProps {
@@ -7,9 +7,10 @@ interface TaskListProps {
     scheduledTasks: ScheduledTask[];
     onDelete: (id: string) => void;
     onComplete: (id: string) => void;
+    onUpdatePriority: (id: string, priority: Priority) => void;
 }
 
-export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDelete, onComplete }) => {
+export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDelete, onComplete, onUpdatePriority }) => {
     const today = startOfDay(new Date());
 
     // 今日のスケジュール済みタスク
@@ -61,7 +62,14 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDel
                                 </button>
                                 <div className="task-info">
                                     <span className="task-time">{format(new Date(task.scheduledTime), 'HH:mm')}</span>
-                                    <span className={`priority-badge p-${task.priority}`}>P{task.priority}</span>
+                                    <select
+                                        className={`priority-badge p-${task.priority}`}
+                                        value={task.priority}
+                                        onChange={(e) => onUpdatePriority(task.taskId, parseInt(e.target.value) as Priority)}
+                                        style={{ border: 'none', cursor: 'pointer', outline: 'none' }}
+                                    >
+                                        {[1, 2, 3, 4, 5].map(p => <option key={p} value={p} style={{ color: 'black' }}>P{p}</option>)}
+                                    </select>
                                     <span className={`task-title ${task.isCompleted ? 'strikethrough' : ''}`}>{task.title}</span>
                                 </div>
                                 <button
@@ -93,7 +101,14 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDel
                                 </button>
                                 <div className="task-info">
                                     <span className="task-time">{format(new Date(task.scheduledTime), 'M/d HH:mm')}</span>
-                                    <span className={`priority-badge p-${task.priority}`}>P{task.priority}</span>
+                                    <select
+                                        className={`priority-badge p-${task.priority}`}
+                                        value={task.priority}
+                                        onChange={(e) => onUpdatePriority(task.taskId, parseInt(e.target.value) as Priority)}
+                                        style={{ border: 'none', cursor: 'pointer', outline: 'none' }}
+                                    >
+                                        {[1, 2, 3, 4, 5].map(p => <option key={p} value={p} style={{ color: 'black' }}>P{p}</option>)}
+                                    </select>
                                     <span className={`task-title ${task.isCompleted ? 'strikethrough' : ''}`}>{task.title}</span>
                                 </div>
                                 <button
@@ -121,7 +136,14 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDel
                         {sortedUnscheduledTasks.map(task => (
                             <li key={task.id} className="task-item">
                                 <div className="task-info">
-                                    <span className={`priority-badge p-${task.priority}`}>P{task.priority}</span>
+                                    <select
+                                        className={`priority-badge p-${task.priority}`}
+                                        value={task.priority}
+                                        onChange={(e) => onUpdatePriority(task.id, parseInt(e.target.value) as Priority)}
+                                        style={{ border: 'none', cursor: 'pointer', outline: 'none' }}
+                                    >
+                                        {[1, 2, 3, 4, 5].map(p => <option key={p} value={p} style={{ color: 'black' }}>P{p}</option>)}
+                                    </select>
                                     <span className="task-title">{task.title}</span>
                                 </div>
                                 <button
