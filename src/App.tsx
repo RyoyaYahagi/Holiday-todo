@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSupabase } from './hooks/useSupabase';
+import { useSupabaseQuery } from './hooks/useSupabaseQuery';
 import { useAuth } from './contexts/AuthContext';
 import { useNotifications } from './hooks/useNotifications';
 import { TaskList } from './components/TaskList';
@@ -28,7 +28,7 @@ function App() {
     saveScheduledTasks,
     exportData,
     importData
-  } = useSupabase();
+  } = useSupabaseQuery();
 
   const [activeTab, setActiveTab] = useState<'tasks' | 'calendar' | 'settings'>('tasks');
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
