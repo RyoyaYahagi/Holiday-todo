@@ -242,10 +242,10 @@ export function reschedulePendingTasks(
 
 // 互換性のために残すが、基本的には reschedulePendingTasks を使うべき
 export const scheduleTasksAcrossHolidays = (
-    tasks: Task[],
-    events: WorkEvent[],
-    scheduledTasks: ScheduledTask[],
-    today: Date
+    _tasks: Task[],
+    _events: WorkEvent[],
+    _scheduledTasks: ScheduledTask[],
+    _today: Date
     // Note: This needs refactoring if it's ever used again, to accept settings.
 ): ScheduledTask[] => {
     return [];

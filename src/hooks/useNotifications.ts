@@ -37,7 +37,7 @@ export function useNotifications(
                         // Ideally, we should persist the scheduled tasks for tomorrow NOW if they don't exist.
 
                         // Let's generate potential schedule
-                        const potentialSchedule = scheduleTasksForHoliday(tomorrow, tasks, events);
+                        const potentialSchedule = scheduleTasksForHoliday(tomorrow, tasks, events, settings);
 
                         if (potentialSchedule.length > 0) {
                             await sendDiscordNotification(
