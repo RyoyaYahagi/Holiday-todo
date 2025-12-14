@@ -25,6 +25,7 @@ export const Settings: React.FC<SettingsProps> = ({
     const [localSettings, setLocalSettings] = useState<AppSettings>(settings);
     const [importStatus, setImportStatus] = useState<string>('');
     const [webhookTestStatus, setWebhookTestStatus] = useState<string>('');
+    const [saveStatus, setSaveStatus] = useState<string>('');
     const [showIcsHelp, setShowIcsHelp] = useState(false);
     const [showDiscordHelp, setShowDiscordHelp] = useState(false);
     const [showAdvanced, setShowAdvanced] = useState(false);
@@ -36,12 +37,15 @@ export const Settings: React.FC<SettingsProps> = ({
 
     const handleSave = () => {
         onUpdateSettings(localSettings);
-        alert('設定を保存しました');
+        setSaveStatus('✅ 設定を保存しました');
+        setTimeout(() => setSaveStatus(''), 3000);
     };
 
     const handleReset = () => {
         if (window.confirm('変更を破棄して元の設定に戻しますか？')) {
             setLocalSettings(settings);
+            setSaveStatus('↩️ 変更を破棄しました');
+            setTimeout(() => setSaveStatus(''), 3000);
         }
     };
 
@@ -367,13 +371,16 @@ export const Settings: React.FC<SettingsProps> = ({
                     </p>
                 </div>
 
-                <div className="action-buttons" style={{ marginTop: '2rem', display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                    <button onClick={handleReset} className="btn-secondary" style={{ backgroundColor: '#f5f5f5' }}>
-                        ↩️ 元に戻す
-                    </button>
-                    <button onClick={handleSave} className="btn-primary" style={{ padding: '0.8rem 2rem', fontSize: '1.1rem' }}>
-                        💾 設定を保存する
-                    </button>
+                <div className="action-buttons" style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <button onClick={handleReset} className="btn-secondary" style={{ backgroundColor: '#f5f5f5' }}>
+                            ↩️ 元に戻す
+                        </button>
+                        <button onClick={handleSave} className="btn-primary" style={{ padding: '0.8rem 2rem', fontSize: '1.1rem' }}>
+                            💾 設定を保存する
+                        </button>
+                    </div>
+                    {saveStatus && <p className="status-msg" style={{ color: '#4caf50', fontWeight: 'bold' }}>{saveStatus}</p>}
                 </div>
             </section>
 
