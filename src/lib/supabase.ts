@@ -12,5 +12,17 @@ if (!supabaseUrl || !supabaseAnonKey) {
  * 
  * 認証、データベース操作、リアルタイム機能へのアクセスを提供する。
  * 環境変数 VITE_SUPABASE_URL と VITE_SUPABASE_ANON_KEY が必要。
+ * 
+ * GZIP/Brotli圧縮を有効化し、レスポンスサイズを削減。
  */
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+        fetch: (input, init) => fetch(input, {
+            ...init,
+            headers: {
+                ...init?.headers,
+                'Accept-Encoding': 'gzip, deflate, br',
+            },
+        }),
+    },
+});
