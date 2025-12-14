@@ -126,7 +126,7 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDel
             {otherTasks.length > 0 && (
                 <div className="task-group">
                     <h3 style={{ fontSize: '1.1rem', color: '#666', marginBottom: '0.8rem', paddingLeft: '0.5rem', borderLeft: '4px solid #ccc' }}>
-                        それ以外
+                        今後の予定
                     </h3>
                     <ul className="task-list-clean">
                         {futureScheduled.map(t => renderItem(t, true))}
