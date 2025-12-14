@@ -136,8 +136,6 @@ function App() {
 
         {activeTab === 'settings' && (
           <div className="tab-content fade-in">
-            <p style={{ background: 'blue', color: 'white', padding: '1rem', fontSize: '1.5rem' }}>APP.TSX SETTINGS OPEN</p>
-
             <Settings
               settings={settings}
               onUpdateSettings={updateSettings}

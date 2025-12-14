@@ -145,7 +145,6 @@ export const Settings: React.FC<SettingsProps> = ({
 
     return (
         <div className="settings-container">
-            <p style={{ background: 'red', color: 'white', padding: '1rem', fontSize: '1.5rem' }}>SETTINGS FILE CHECK 999</p>
             {/* チュートリアル・ヘルプ */}
             {onShowTutorial && (
                 <section className="settings-section">
