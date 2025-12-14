@@ -38,16 +38,46 @@ interface EventRow {
 
 /**
  * 指定日が休日かを判定
+ * 
+ * イベントのstart_timeはUTCで保存されている可能性があるため、
+ * JSTに変換してから日付を比較する。
  */
-function isHoliday(date: Date, events: EventRow[]): boolean {
-    const dateStr = date.toISOString().split('T')[0]
-    const dayEvents = events.filter(e => e.start_time.startsWith(dateStr))
+function isHoliday(dateStr: string, events: EventRow[]): boolean {
+    // dateStrはYYYY-MM-DD形式（JST）
+    const dayEvents = events.filter(e => {
+        // start_timeをDateオブジェクトに変換
+        const eventDate = new Date(e.start_time)
+        // JSTでの日付を取得（UTC+9）
+        const jstHours = eventDate.getUTCHours() + 9
+        const jstDate = new Date(eventDate)
+        if (jstHours >= 24) {
+            jstDate.setUTCDate(jstDate.getUTCDate() + 1)
+        }
+        const eventDateStrJST = jstDate.toISOString().split('T')[0]
+        return eventDateStrJST === dateStr
+    })
 
-    if (dayEvents.length === 0) return true
-    if (dayEvents.some(e => e.event_type === '休み')) return true
+    console.log(`[notify-discord] isHoliday(${dateStr}): イベント数=${dayEvents.length}`)
+    if (dayEvents.length > 0) {
+        console.log(`[notify-discord] isHoliday: イベント詳細=${JSON.stringify(dayEvents.slice(0, 3).map(e => ({ type: e.event_type, start: e.start_time })))}`)
+    }
 
+    // イベントがない日は休日
+    if (dayEvents.length === 0) {
+        console.log(`[notify-discord] isHoliday: イベントなし → 休日`)
+        return true
+    }
+    // 「休み」イベントがある場合は休日
+    if (dayEvents.some(e => e.event_type === '休み')) {
+        console.log(`[notify-discord] isHoliday: 「休み」イベントあり → 休日`)
+        return true
+    }
+
+    console.log(`[notify-discord] isHoliday: 勤務イベントあり → 休日ではない`)
     return false
 }
+
+
 
 /**
  * Discord Webhookへ通知を送信
@@ -171,9 +201,8 @@ Deno.serve(async (req) => {
 
             console.log(`[notify-discord] イベント取得: ${events?.length || 0}件`)
 
-            // 明日の日付で休日判定
-            const tomorrowDate = new Date(tomorrowJST + 'T00:00:00Z')
-            const isTomorrowHoliday = isHoliday(tomorrowDate, events as EventRow[] || [])
+            // 明日の日付で休日判定（tomorrowJSTはYYYY-MM-DD形式）
+            const isTomorrowHoliday = isHoliday(tomorrowJST, events as EventRow[] || [])
             console.log(`[notify-discord] 明日(${tomorrowJST})は休日: ${isTomorrowHoliday}`)
 
             if (isTomorrowHoliday) {
