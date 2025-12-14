@@ -1,23 +1,25 @@
 import { useEffect, useRef } from 'react';
 import type { AppSettings, ScheduledTask, WorkEvent } from '../types';
 import { sendDiscordNotification } from '../lib/discordWebhook';
-import { subDays } from 'date-fns';
-import { scheduleTasksForHoliday, isHoliday } from '../lib/scheduler';
+import { isSameDay } from 'date-fns';
+import { isHoliday } from '../lib/scheduler';
 
 export function useNotifications(
     settings: AppSettings,
-    tasks: any[], // Raw tasks to schedule for tomorrow check
+    _tasks: any[], // Raw tasks (現在は使用しない - 既存スケジュールを使う)
     events: WorkEvent[],
     scheduledTasks: ScheduledTask[],
     _saveScheduledTasks: (t: ScheduledTask[]) => void
 ) {
     const lastCheckRef = useRef<number>(Date.now());
+    // 重複通知防止: 最後に「前日通知」を送った日付
+    const lastDayBeforeNotificationDateRef = useRef<string>('');
 
     useEffect(() => {
         const checkInterval = setInterval(async () => {
             const now = new Date();
 
-            // 1. Day Before Notification
+            // 1. Day Before Notification (前日通知)
             if (settings.notifyOnDayBefore && settings.discordWebhookUrl) {
                 const [notifyHour, notifyMinute] = settings.notifyDayBeforeTime.split(':').map(Number);
                 const notifyTimeToday = new Date(now);
@@ -30,33 +32,44 @@ export function useNotifications(
                     // Check if tomorrow is holiday
                     const tomorrow = new Date(now);
                     tomorrow.setDate(tomorrow.getDate() + 1);
+                    const tomorrowKey = tomorrow.toISOString().split('T')[0]; // YYYY-MM-DD
 
-                    if (isHoliday(tomorrow, events)) {
-                        // Schedule tasks for tomorrow if not already scheduled?
-                        // Or just simulate what would be scheduled.
-                        // Ideally, we should persist the scheduled tasks for tomorrow NOW if they don't exist.
-
-                        // Let's generate potential schedule
-                        const potentialSchedule = scheduleTasksForHoliday(tomorrow, tasks, events, settings);
-
-                        if (potentialSchedule.length > 0) {
-                            await sendDiscordNotification(
-                                settings.discordWebhookUrl,
-                                potentialSchedule,
-                                '📅 **明日の休日スケジュール**'
+                    // 重複防止: 今日既にこの日付の通知を送っていたらスキップ
+                    if (lastDayBeforeNotificationDateRef.current !== tomorrowKey) {
+                        if (isHoliday(tomorrow, events)) {
+                            // 明日のスケジュール済みタスクを取得（未完了のみ）
+                            const tomorrowTasks = scheduledTasks.filter(t =>
+                                !t.isCompleted &&
+                                isSameDay(new Date(t.scheduledTime), tomorrow)
                             );
+
+                            if (tomorrowTasks.length > 0) {
+                                // 時間順にソート
+                                const sortedTasks = [...tomorrowTasks].sort((a, b) =>
+                                    a.scheduledTime - b.scheduledTime
+                                );
+
+                                await sendDiscordNotification(
+                                    settings.discordWebhookUrl,
+                                    sortedTasks,
+                                    '📅 **明日の休日スケジュール**'
+                                );
+
+                                // 送信済みとしてマーク
+                                lastDayBeforeNotificationDateRef.current = tomorrowKey;
+                            }
                         }
                     }
                 }
             }
 
-            // 2. Task Start Notification
+            // 2. Task Start Notification (タスク開始通知)
             if (settings.notifyBeforeTask && settings.discordWebhookUrl) {
                 scheduledTasks.forEach(async (task) => {
                     if (task.isCompleted) return;
 
                     const taskTime = new Date(task.scheduledTime);
-                    const notifyTime = subDays(taskTime, 0); // copy
+                    const notifyTime = new Date(taskTime);
                     notifyTime.setMinutes(notifyTime.getMinutes() - settings.notifyBeforeTaskMinutes);
 
                     // Check if we hit the notify time
@@ -79,5 +92,5 @@ export function useNotifications(
         }, 30000); // Check every 30 seconds
 
         return () => clearInterval(checkInterval);
-    }, [settings, tasks, events, scheduledTasks]);
+    }, [settings, events, scheduledTasks]);
 }
