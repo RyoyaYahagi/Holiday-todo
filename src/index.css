@@ -306,15 +306,13 @@ input[type="file"] {
   color: var(--danger-color);
 }
 
-/* Calendar */
+/* Calendar - Apple Calendar inspired design */
 .calendar-container {
   background: var(--card-bg);
   border-radius: var(--radius-lg);
   padding: 0.5rem;
   box-shadow: var(--shawdow-sm);
   width: 100%;
-  max-width: 100%;
-  overflow: hidden;
   box-sizing: border-box;
 }
 
@@ -322,60 +320,87 @@ input[type="file"] {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
+  padding: 0 0.25rem;
 }
 
 .calendar-header h2 {
-  font-size: 1rem;
+  font-size: 1.1rem;
+  font-weight: 700;
   margin: 0;
 }
 
 .calendar-header button {
   background: none;
-  border: 1px solid #eee;
+  border: 1px solid #ddd;
   border-radius: 50%;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--primary-color);
 }
 
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
+  gap: 0;
   width: 100%;
 }
 
 .weekday-header {
   text-align: center;
-  font-size: 0.8rem;
+  font-size: 0.65rem;
   color: var(--text-secondary);
-  padding-bottom: 0.5rem;
+  padding: 0.25rem 0;
+  font-weight: 500;
+}
+
+/* 日曜日を赤、土曜日を青に */
+.weekday-header:first-child {
+  color: #e74c3c;
+}
+
+.weekday-header:last-child {
+  color: #3498db;
 }
 
 .calendar-day-wrapper {
-  aspect-ratio: 0.65;
-  /* Taller cells to fit 7 columns on mobile */
+  /* aspect-ratio削除 - 縦は内容に応じて */
+  min-height: 60px;
+  padding: 2px;
 }
 
 .day-cell {
   height: 100%;
-  border: 1px solid #f0f0f0;
-  border-radius: 8px;
-  padding: 2px;
-  font-size: 0.7rem;
+  border: none;
+  border-radius: 0;
+  padding: 4px 2px;
+  font-size: 0.75rem;
   position: relative;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  background: transparent;
 }
 
-.day-cell.today {
-  border-color: var(--primary-color);
-  background: #f0f7ff;
+.day-cell.today .day-number {
+  background: var(--primary-color);
+  color: white;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .day-cell.holiday {
-  background-color: #fff0f0;
+  background-color: transparent;
+}
+
+.day-cell.holiday .day-number {
+  color: #e74c3c;
 }
 
 .day-cell.other-month {
@@ -384,31 +409,50 @@ input[type="file"] {
 
 .day-header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
 
 .day-number {
-  font-weight: 600;
-  margin-left: 2px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+}
+
+/* 日曜日の日付を赤に */
+.calendar-day-wrapper:nth-child(7n+1) .day-number {
+  color: #e74c3c;
+}
+
+/* 土曜日の日付を青に */
+.calendar-day-wrapper:nth-child(7n) .day-number {
+  color: #3498db;
+}
+
+/* today の色は上書き */
+.day-cell.today .day-number {
+  color: white !important;
 }
 
 .badge-work {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   display: inline-block;
   text-indent: -9999px;
-  /* Hide text, just show dot */
-  margin-top: 2px;
-  margin-right: 2px;
+  margin: 1px;
 }
 
 .badge-yasumi {
   color: var(--work-yasumi);
   font-weight: bold;
-  font-size: 0.6rem;
-  margin-right: 2px;
+  font-size: 0.55rem;
 }
 
 .badge-work.yakin {
@@ -422,18 +466,21 @@ input[type="file"] {
 .day-content {
   flex: 1;
   overflow: hidden;
+  width: 100%;
   margin-top: 2px;
 }
 
 .mini-task {
-  font-size: 8px;
+  font-size: 0.55rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  background: #eee;
+  background: #e8f4e8;
+  color: #2d7d32;
   border-radius: 2px;
   margin-bottom: 1px;
-  padding: 0 1px;
+  padding: 1px 2px;
+  text-align: center;
 }
 
 /* Settings */
