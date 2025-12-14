@@ -671,13 +671,3 @@ input[type="file"] {
   border-color: #339af0;
   font-weight: bold;
 }
-
-/* Week View Specifics */
-.calendar-container.week-view .calendar-grid {
-  /* 週表示でもグリッドは7列だが、行数が少ない */
-}
-
-.week-view-cell {
-  min-height: 200px;
-  /* 週表示は詳細を見やすくするため高さを確保 */
-}
