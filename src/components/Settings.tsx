@@ -22,11 +22,32 @@ export const Settings: React.FC<SettingsProps> = ({
     onNavigateToCalendar,
     onShowTutorial
 }) => {
+    const [localSettings, setLocalSettings] = useState<AppSettings>(settings);
     const [importStatus, setImportStatus] = useState<string>('');
     const [webhookTestStatus, setWebhookTestStatus] = useState<string>('');
+    const [saveStatus, setSaveStatus] = useState<string>('');
     const [showIcsHelp, setShowIcsHelp] = useState(false);
     const [showDiscordHelp, setShowDiscordHelp] = useState(false);
     const [showAdvanced, setShowAdvanced] = useState(false);
+
+    // settingsプロップが変更されたらローカルステートも更新（外部からの変更を反映）
+    React.useEffect(() => {
+        setLocalSettings(settings);
+    }, [settings]);
+
+    const handleSave = () => {
+        onUpdateSettings(localSettings);
+        setSaveStatus('✅ 設定を保存しました');
+        setTimeout(() => setSaveStatus(''), 3000);
+    };
+
+    const handleReset = () => {
+        if (window.confirm('変更を破棄して元の設定に戻しますか？')) {
+            setLocalSettings(settings);
+            setSaveStatus('↩️ 変更を破棄しました');
+            setTimeout(() => setSaveStatus(''), 3000);
+        }
+    };
 
     const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -70,13 +91,13 @@ export const Settings: React.FC<SettingsProps> = ({
     };
 
     const handleWebhookTest = async () => {
-        if (!settings.discordWebhookUrl) {
+        if (!localSettings.discordWebhookUrl) {
             setWebhookTestStatus('❌ Webhook URLを入力してください');
             return;
         }
         setWebhookTestStatus('送信中...');
         const result = await sendDiscordNotification(
-            settings.discordWebhookUrl,
+            localSettings.discordWebhookUrl,
             [{ id: 'test', taskId: 'test', title: 'テストタスク', priority: 5, createdAt: 0, scheduledTime: Date.now(), isCompleted: false }],
             '【テスト通知】これはテスト通知です。'
         );
@@ -124,6 +145,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
     return (
         <div className="settings-container">
+            <p style={{ background: 'red', color: 'white', padding: '1rem', fontSize: '1.5rem' }}>SETTINGS FILE CHECK 999</p>
             {/* チュートリアル・ヘルプ */}
             {onShowTutorial && (
                 <section className="settings-section">
@@ -228,8 +250,8 @@ export const Settings: React.FC<SettingsProps> = ({
                     <label>Webhook URL</label>
                     <input
                         type="text"
-                        value={settings.discordWebhookUrl}
-                        onChange={(e) => onUpdateSettings({ ...settings, discordWebhookUrl: e.target.value })}
+                        value={localSettings.discordWebhookUrl}
+                        onChange={(e) => setLocalSettings({ ...localSettings, discordWebhookUrl: e.target.value })}
                         placeholder="https://discord.com/api/webhooks/..."
                     />
                 </div>
@@ -240,15 +262,15 @@ export const Settings: React.FC<SettingsProps> = ({
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                         <input
                             type="checkbox"
-                            checked={settings.notifyOnDayBefore}
-                            onChange={(e) => onUpdateSettings({ ...settings, notifyOnDayBefore: e.target.checked })}
+                            checked={localSettings.notifyOnDayBefore}
+                            onChange={(e) => setLocalSettings({ ...localSettings, notifyOnDayBefore: e.target.checked })}
                         />
                         <span>前日</span>
                         <input
                             type="time"
-                            value={settings.notifyDayBeforeTime}
-                            onChange={(e) => onUpdateSettings({ ...settings, notifyDayBeforeTime: e.target.value })}
-                            disabled={!settings.notifyOnDayBefore}
+                            value={localSettings.notifyDayBeforeTime}
+                            onChange={(e) => setLocalSettings({ ...localSettings, notifyDayBeforeTime: e.target.value })}
+                            disabled={!localSettings.notifyOnDayBefore}
                             className="time-input"
                             style={{ padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }}
                         />
@@ -259,32 +281,48 @@ export const Settings: React.FC<SettingsProps> = ({
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                         <input
                             type="checkbox"
-                            checked={settings.notifyBeforeTask}
-                            onChange={(e) => onUpdateSettings({ ...settings, notifyBeforeTask: e.target.checked })}
+                            checked={localSettings.notifyBeforeTask}
+                            onChange={(e) => setLocalSettings({ ...localSettings, notifyBeforeTask: e.target.checked })}
                         />
                         <span>タスク開始</span>
                         <input
                             type="number"
                             min="5"
                             max="120"
-                            value={settings.notifyBeforeTaskMinutes}
-                            onChange={(e) => onUpdateSettings({ ...settings, notifyBeforeTaskMinutes: parseInt(e.target.value) || 30 })}
-                            disabled={!settings.notifyBeforeTask}
+                            value={localSettings.notifyBeforeTaskMinutes}
+                            onChange={(e) => setLocalSettings({ ...localSettings, notifyBeforeTaskMinutes: parseInt(e.target.value) || 30 })}
+                            disabled={!localSettings.notifyBeforeTask}
                             style={{ width: '60px', padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }}
                         />
                         <span>分前に通知する</span>
                     </label>
                 </div>
 
-                <div className="section-divider" style={{ margin: '1.5rem 0', borderTop: '1px solid #eee' }} />
+                <div className="action-buttons" style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <button onClick={handleReset} className="btn-secondary" style={{ backgroundColor: '#f5f5f5', padding: '0.5rem 1rem' }}>
+                            ↩️ 元に戻す
+                        </button>
+                        <button onClick={handleSave} className="btn-primary" style={{ padding: '0.5rem 1.5rem', width: 'auto' }}>
+                            💾 保存
+                        </button>
+                    </div>
+                    {saveStatus && <p className="status-msg" style={{ color: '#4caf50', fontWeight: 'bold', fontSize: '0.9rem' }}>{saveStatus}</p>}
+                </div>
+            </section>
 
-                <h4 style={{ marginBottom: '1rem', color: '#555' }}>スケジュール設定</h4>
+            {/* スケジュール設定セクション */}
+            <section className="settings-section">
+                <h3>⏰ スケジュール設定</h3>
+                <p className="description">
+                    タスクの自動スケジューリングに関する設定です。変更後は「保存」ボタンを押してください。
+                </p>
 
                 <div className="form-group">
                     <label>タスクの時間間隔（時間）</label>
                     <select
-                        value={settings.scheduleInterval}
-                        onChange={(e) => onUpdateSettings({ ...settings, scheduleInterval: parseInt(e.target.value) })}
+                        value={localSettings.scheduleInterval}
+                        onChange={(e) => setLocalSettings({ ...localSettings, scheduleInterval: parseInt(e.target.value) })}
                         style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginLeft: '10px' }}
                     >
                         {[1, 2, 3, 4, 5, 6].map(h => (
@@ -296,8 +334,8 @@ export const Settings: React.FC<SettingsProps> = ({
                 <div className="form-group" style={{ marginTop: '1rem' }}>
                     <label>午前の開始時間（日勤/休み）</label>
                     <select
-                        value={settings.startTimeMorning}
-                        onChange={(e) => onUpdateSettings({ ...settings, startTimeMorning: parseInt(e.target.value) })}
+                        value={localSettings.startTimeMorning}
+                        onChange={(e) => setLocalSettings({ ...localSettings, startTimeMorning: parseInt(e.target.value) })}
                         style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginLeft: '10px' }}
                     >
                         {Array.from({ length: 12 }, (_, i) => i).map(h => (
@@ -309,8 +347,8 @@ export const Settings: React.FC<SettingsProps> = ({
                 <div className="form-group" style={{ marginTop: '1rem' }}>
                     <label>午後の開始時間（夜勤明けなど）</label>
                     <select
-                        value={settings.startTimeAfternoon}
-                        onChange={(e) => onUpdateSettings({ ...settings, startTimeAfternoon: parseInt(e.target.value) })}
+                        value={localSettings.startTimeAfternoon}
+                        onChange={(e) => setLocalSettings({ ...localSettings, startTimeAfternoon: parseInt(e.target.value) })}
                         style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginLeft: '10px' }}
                     >
                         {Array.from({ length: 12 }, (_, i) => i + 12).map(h => (
@@ -322,8 +360,8 @@ export const Settings: React.FC<SettingsProps> = ({
                 <div className="form-group" style={{ marginTop: '1rem' }}>
                     <label>1日の最大タスク数</label>
                     <select
-                        value={settings.maxTasksPerDay}
-                        onChange={(e) => onUpdateSettings({ ...settings, maxTasksPerDay: parseInt(e.target.value) })}
+                        value={localSettings.maxTasksPerDay}
+                        onChange={(e) => setLocalSettings({ ...localSettings, maxTasksPerDay: parseInt(e.target.value) })}
                         style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginLeft: '10px' }}
                     >
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
@@ -337,8 +375,8 @@ export const Settings: React.FC<SettingsProps> = ({
                 <div className="form-group">
                     <label>最大優先度 (1〜5)</label>
                     <select
-                        value={settings.maxPriority || 5}
-                        onChange={(e) => onUpdateSettings({ ...settings, maxPriority: parseInt(e.target.value) })}
+                        value={localSettings.maxPriority || 5}
+                        onChange={(e) => setLocalSettings({ ...localSettings, maxPriority: parseInt(e.target.value) })}
                         style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginLeft: '10px' }}
                     >
                         {[1, 2, 3, 4, 5].map(n => (
@@ -348,6 +386,18 @@ export const Settings: React.FC<SettingsProps> = ({
                     <p className="description" style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.2rem' }}>
                         タスクの優先度の選択肢を制限します。（例: 3に設定するとP1〜P3のみ選択可能）
                     </p>
+                </div>
+
+                <div className="action-buttons" style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <button onClick={handleReset} className="btn-secondary" style={{ backgroundColor: '#f5f5f5' }}>
+                            ↩️ 元に戻す
+                        </button>
+                        <button onClick={handleSave} className="btn-primary" style={{ padding: '0.8rem 2rem', fontSize: '1.1rem', width: 'auto' }}>
+                            💾 設定を保存する
+                        </button>
+                    </div>
+                    {saveStatus && <p className="status-msg" style={{ color: '#4caf50', fontWeight: 'bold' }}>{saveStatus}</p>}
                 </div>
             </section>
 
