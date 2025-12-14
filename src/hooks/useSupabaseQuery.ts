@@ -27,8 +27,11 @@ const QUERY_KEYS = {
  * ユーザー認証が必要。
  */
 export function useSupabaseQuery() {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const queryClient = useQueryClient();
+
+    // 認証が完了するまでクエリを有効にしない
+    const isAuthReady = !authLoading && !!user;
 
     // スケジューリング処理の重複実行を防ぐためのフラグ
     const isScheduling = useRef(false);
@@ -39,7 +42,7 @@ export function useSupabaseQuery() {
     const tasksQuery = useQuery({
         queryKey: QUERY_KEYS.tasks,
         queryFn: () => supabaseDb.getAllTasks(),
-        enabled: !!user,
+        enabled: isAuthReady,
         staleTime: 5 * 60 * 1000,
     });
 
@@ -49,7 +52,7 @@ export function useSupabaseQuery() {
     const scheduledTasksQuery = useQuery({
         queryKey: QUERY_KEYS.scheduledTasks,
         queryFn: () => supabaseDb.getScheduledTasks(),
-        enabled: !!user,
+        enabled: isAuthReady,
         staleTime: 5 * 60 * 1000,
     });
 
@@ -59,7 +62,7 @@ export function useSupabaseQuery() {
     const eventsQuery = useQuery({
         queryKey: QUERY_KEYS.events,
         queryFn: () => supabaseDb.getAllEvents(),
-        enabled: !!user,
+        enabled: isAuthReady,
         staleTime: 5 * 60 * 1000,
     });
 
@@ -69,7 +72,7 @@ export function useSupabaseQuery() {
     const settingsQuery = useQuery({
         queryKey: QUERY_KEYS.settings,
         queryFn: () => supabaseDb.getSettings(),
-        enabled: !!user,
+        enabled: isAuthReady,
         staleTime: 5 * 60 * 1000,
     });
 
@@ -96,13 +99,9 @@ export function useSupabaseQuery() {
     /**
      * 自動スケジューリングを実行 (内部用・バックグラウンド)
      * UIをブロックせずに実行される
+     * キャッシュから最新のデータを取得してスケジューリングを行う
      */
-    const runAutoScheduleBackground = useCallback((
-        currentTasks: Task[],
-        currentScheduled: ScheduledTask[],
-        currentEvents: WorkEvent[],
-        currentSettings: AppSettings
-    ) => {
+    const runAutoScheduleBackground = useCallback(() => {
         if (isScheduling.current) {
             console.log('Skipping auto-schedule: already running');
             return;
@@ -113,6 +112,12 @@ export function useSupabaseQuery() {
         // 非同期で実行（UIをブロックしない）
         (async () => {
             try {
+                // キャッシュから最新のデータを取得
+                const currentTasks = queryClient.getQueryData<Task[]>(QUERY_KEYS.tasks) ?? [];
+                const currentScheduled = queryClient.getQueryData<ScheduledTask[]>(QUERY_KEYS.scheduledTasks) ?? [];
+                const currentEvents = queryClient.getQueryData<WorkEvent[]>(QUERY_KEYS.events) ?? [];
+                const currentSettings = queryClient.getQueryData<AppSettings>(QUERY_KEYS.settings) ?? DEFAULT_SETTINGS;
+
                 const today = new Date();
                 const { newSchedules, obsoleteScheduleIds } = reschedulePendingTasks(
                     currentTasks,
@@ -196,8 +201,7 @@ export function useSupabaseQuery() {
             });
 
             // 自動スケジューリング（バックグラウンド）
-            const nextTasks = [...tasks, newTask];
-            runAutoScheduleBackground(nextTasks, scheduledTasks, events, settings);
+            runAutoScheduleBackground();
         },
     });
 
@@ -225,10 +229,9 @@ export function useSupabaseQuery() {
                 queryClient.setQueryData(QUERY_KEYS.tasks, context.previousTasks);
             }
         },
-        onSuccess: (updatedTask) => {
+        onSuccess: () => {
             // 自動スケジューリング（バックグラウンド）
-            const nextTasks = tasks.map(t => t.id === updatedTask.id ? updatedTask : t);
-            runAutoScheduleBackground(nextTasks, scheduledTasks, events, settings);
+            runAutoScheduleBackground();
         },
     });
 
@@ -267,12 +270,10 @@ export function useSupabaseQuery() {
                 queryClient.setQueryData(QUERY_KEYS.scheduledTasks, context.previousScheduled);
             }
         },
-        onSuccess: ({ id, hasCompletedSchedule }) => {
+        onSuccess: ({ hasCompletedSchedule }) => {
             // 完了していないタスクを削除した時だけ再スケジュール（バックグラウンド）
             if (!hasCompletedSchedule) {
-                const nextTasks = tasks.filter(t => t.id !== id);
-                const nextScheduled = scheduledTasks.filter(t => t.taskId !== id);
-                runAutoScheduleBackground(nextTasks, nextScheduled, events, settings);
+                runAutoScheduleBackground();
             }
         },
     });
@@ -296,8 +297,8 @@ export function useSupabaseQuery() {
                 queryClient.setQueryData(QUERY_KEYS.events, context.previousEvents);
             }
         },
-        onSuccess: (newEvents) => {
-            runAutoScheduleBackground(tasks, scheduledTasks, newEvents, settings);
+        onSuccess: () => {
+            runAutoScheduleBackground();
         },
     });
 
@@ -400,8 +401,8 @@ export function useSupabaseQuery() {
                 queryClient.setQueryData(QUERY_KEYS.settings, context.previousSettings);
             }
         },
-        onSuccess: (newSettings) => {
-            runAutoScheduleBackground(tasks, scheduledTasks, events, newSettings);
+        onSuccess: () => {
+            runAutoScheduleBackground();
         },
     });
 
@@ -423,14 +424,8 @@ export function useSupabaseQuery() {
             // 全キャッシュを無効化して再取得
             await refreshData();
 
-            // 新しいデータでスケジューリング
-            const [allTasks, allScheduled, allEvents, currentSettings] = await Promise.all([
-                supabaseDb.getAllTasks(),
-                supabaseDb.getScheduledTasks(),
-                supabaseDb.getAllEvents(),
-                supabaseDb.getSettings()
-            ]);
-            runAutoScheduleBackground(allTasks, allScheduled, allEvents, currentSettings);
+            // 新しいデータでスケジューリング（refreshDataでキャッシュが更新されるのを待つ）
+            runAutoScheduleBackground();
         },
     });
 

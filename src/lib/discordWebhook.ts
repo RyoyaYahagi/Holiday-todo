@@ -12,7 +12,7 @@ export async function sendDiscordNotification(webhookUrl: string, tasks: Schedul
         return `・${time} - ${t.title} (Priority: ${t.priority})`;
     }).join('\n');
 
-    const content = `${messagePrefix}\n\n**本日の予定**\n${taskLines}`;
+    const content = messagePrefix ? `${messagePrefix}\n${taskLines}` : `**本日の予定**\n${taskLines}`;
 
     try {
         const response = await fetch(webhookUrl, {
