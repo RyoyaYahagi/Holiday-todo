@@ -27,8 +27,11 @@ const QUERY_KEYS = {
  * ユーザー認証が必要。
  */
 export function useSupabaseQuery() {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const queryClient = useQueryClient();
+
+    // 認証が完了するまでクエリを有効にしない
+    const isAuthReady = !authLoading && !!user;
 
     // スケジューリング処理の重複実行を防ぐためのフラグ
     const isScheduling = useRef(false);
@@ -39,7 +42,7 @@ export function useSupabaseQuery() {
     const tasksQuery = useQuery({
         queryKey: QUERY_KEYS.tasks,
         queryFn: () => supabaseDb.getAllTasks(),
-        enabled: !!user,
+        enabled: isAuthReady,
         staleTime: 5 * 60 * 1000,
     });
 
@@ -49,7 +52,7 @@ export function useSupabaseQuery() {
     const scheduledTasksQuery = useQuery({
         queryKey: QUERY_KEYS.scheduledTasks,
         queryFn: () => supabaseDb.getScheduledTasks(),
-        enabled: !!user,
+        enabled: isAuthReady,
         staleTime: 5 * 60 * 1000,
     });
 
@@ -59,7 +62,7 @@ export function useSupabaseQuery() {
     const eventsQuery = useQuery({
         queryKey: QUERY_KEYS.events,
         queryFn: () => supabaseDb.getAllEvents(),
-        enabled: !!user,
+        enabled: isAuthReady,
         staleTime: 5 * 60 * 1000,
     });
 
@@ -69,7 +72,7 @@ export function useSupabaseQuery() {
     const settingsQuery = useQuery({
         queryKey: QUERY_KEYS.settings,
         queryFn: () => supabaseDb.getSettings(),
-        enabled: !!user,
+        enabled: isAuthReady,
         staleTime: 5 * 60 * 1000,
     });
 
