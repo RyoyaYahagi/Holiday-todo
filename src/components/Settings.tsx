@@ -296,6 +296,18 @@ export const Settings: React.FC<SettingsProps> = ({
                         <span>分前に通知する</span>
                     </label>
                 </div>
+
+                <div className="action-buttons" style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <button onClick={handleReset} className="btn-secondary" style={{ backgroundColor: '#f5f5f5', padding: '0.5rem 1rem' }}>
+                            ↩️ 元に戻す
+                        </button>
+                        <button onClick={handleSave} className="btn-primary" style={{ padding: '0.5rem 1.5rem' }}>
+                            💾 保存
+                        </button>
+                    </div>
+                    {saveStatus && <p className="status-msg" style={{ color: '#4caf50', fontWeight: 'bold', fontSize: '0.9rem' }}>{saveStatus}</p>}
+                </div>
             </section>
 
             {/* スケジュール設定セクション */}
