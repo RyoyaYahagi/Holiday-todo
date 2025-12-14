@@ -6,7 +6,6 @@ import { DEFAULT_SETTINGS, type Task, type AppSettings, type WorkEvent, type Sch
  */
 interface TaskRow {
     id: string;
-    user_id: string;
     title: string;
     priority: number;
     created_at: string;
@@ -14,7 +13,6 @@ interface TaskRow {
 
 interface ScheduledTaskRow {
     id: string;
-    user_id: string;
     task_id: string;
     title: string;
     priority: number;
@@ -26,7 +24,6 @@ interface ScheduledTaskRow {
 
 interface EventRow {
     id: string;
-    user_id: string;
     title: string;
     start_time: string;
     end_time: string;
@@ -107,7 +104,7 @@ export const supabaseDb = {
 
         const { data, error } = await supabase
             .from('tasks')
-            .select('*')
+            .select('id, title, priority, created_at')
             .eq('user_id', user.id)
             .order('created_at', { ascending: true });
 
@@ -124,7 +121,7 @@ export const supabaseDb = {
 
         const { data, error } = await supabase
             .from('settings')
-            .select('*')
+            .select('user_id, discord_webhook_url, notify_on_day_before, notify_day_before_time, notify_before_task, notify_before_task_minutes, max_priority, schedule_interval, start_time_morning, start_time_afternoon, max_tasks_per_day')
             .eq('user_id', user.id)
             .single();
 
@@ -249,7 +246,7 @@ export const supabaseDb = {
 
         const { data, error } = await supabase
             .from('events')
-            .select('*')
+            .select('id, title, start_time, end_time, event_type')
             .eq('user_id', user.id)
             .order('start_time', { ascending: true });
 
@@ -299,7 +296,7 @@ export const supabaseDb = {
 
         const { data, error } = await supabase
             .from('scheduled_tasks')
-            .select('*')
+            .select('id, task_id, title, priority, scheduled_time, is_completed, notified_at, created_at')
             .eq('user_id', user.id)
             .order('scheduled_time', { ascending: true });
 
