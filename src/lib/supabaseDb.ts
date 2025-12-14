@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { DEFAULT_SETTINGS, type Task, type AppSettings, type WorkEvent, type ScheduledTask } from '../types';
+import { DEFAULT_SETTINGS, type Task, type AppSettings, type WorkEvent, type ScheduledTask, type EventType } from '../types';
 
 /**
  * Supabaseのデータベース行型定義
@@ -20,7 +20,7 @@ interface ScheduledTaskRow {
     priority: number;
     scheduled_time: string;
     is_completed: boolean;
-    notified_at: string | null;
+    notified_at?: string | null;
     created_at: string;
 }
 
@@ -40,11 +40,11 @@ interface SettingsRow {
     notify_day_before_time: string;
     notify_before_task: boolean;
     notify_before_task_minutes: number;
-    max_priority?: number;
-    schedule_interval?: number;
-    start_time_morning?: number;
-    start_time_afternoon?: number;
-    max_tasks_per_day?: number;
+    max_priority: number;
+    schedule_interval: number;
+    start_time_morning: number;
+    start_time_afternoon: number;
+    max_tasks_per_day: number;
 }
 
 /**
@@ -59,59 +59,62 @@ function rowToTask(row: TaskRow): Task {
     };
 }
 
-/**
- * ScheduledTaskRow を ScheduledTask 型に変換
- */
 function rowToScheduledTask(row: ScheduledTaskRow): ScheduledTask {
     return {
         id: row.id,
         taskId: row.task_id,
         title: row.title,
         priority: row.priority as 1 | 2 | 3 | 4 | 5,
-        createdAt: new Date(row.created_at).getTime(),
         scheduledTime: new Date(row.scheduled_time).getTime(),
         isCompleted: row.is_completed,
-        notifiedAt: row.notified_at ? new Date(row.notified_at).getTime() : undefined
+        notifiedAt: row.notified_at ? new Date(row.notified_at).getTime() : undefined,
+        createdAt: new Date(row.created_at).getTime()
     };
 }
 
-/**
- * EventRow を WorkEvent 型に変換
- */
 function rowToEvent(row: EventRow): WorkEvent {
     return {
         title: row.title,
         start: new Date(row.start_time),
         end: new Date(row.end_time),
-        eventType: row.event_type as '夜勤' | '日勤' | '休み' | 'その他'
+        eventType: row.event_type as EventType
     };
 }
 
-/**
- * SettingsRow を AppSettings 型に変換
- */
 function rowToSettings(row: SettingsRow): AppSettings {
     return {
-        discordWebhookUrl: row.discord_webhook_url,
-        notifyOnDayBefore: row.notify_on_day_before,
-        notifyDayBeforeTime: row.notify_day_before_time,
-        notifyBeforeTask: row.notify_before_task,
-        notifyBeforeTaskMinutes: row.notify_before_task_minutes,
+        discordWebhookUrl: row.discord_webhook_url ?? '',
+        notifyOnDayBefore: row.notify_on_day_before ?? true,
+        notifyDayBeforeTime: row.notify_day_before_time ?? '21:00',
+        notifyBeforeTask: row.notify_before_task ?? true,
+        notifyBeforeTaskMinutes: row.notify_before_task_minutes ?? 30,
         maxPriority: row.max_priority ?? 5,
         scheduleInterval: row.schedule_interval ?? 2,
         startTimeMorning: row.start_time_morning ?? 8,
         startTimeAfternoon: row.start_time_afternoon ?? 13,
-        maxTasksPerDay: row.max_tasks_per_day ?? 3,
+        maxTasksPerDay: row.max_tasks_per_day ?? 3
     };
 }
 
-/**
- * Supabase データベース操作モジュール
- * 
- * IndexedDBベースのdbモジュールと同じインターフェースを提供し、
- * バックエンドとしてSupabaseを使用する。
- */
 export const supabaseDb = {
+
+    /**
+     * 全タスクを取得
+     */
+    async getAllTasks(): Promise<Task[]> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return [];
+
+        const { data, error } = await supabase
+            .from('tasks')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+        return (data || []).map(rowToTask);
+    },
+
     /**
      * 設定を取得
      */
@@ -123,14 +126,16 @@ export const supabaseDb = {
             .from('settings')
             .select('*')
             .eq('user_id', user.id)
-            .maybeSingle();
+            .single();
 
         if (error) {
-            console.error('設定取得エラー:', error);
-            return DEFAULT_SETTINGS;
+            // データがない場合はデフォルト設定を返す
+            if (error.code === 'PGRST116') {
+                return DEFAULT_SETTINGS;
+            }
+            throw error;
         }
-        if (!data) return DEFAULT_SETTINGS;
-        return rowToSettings(data);
+        return data ? rowToSettings(data) : DEFAULT_SETTINGS;
     },
 
     /**
@@ -153,27 +158,10 @@ export const supabaseDb = {
                 schedule_interval: settings.scheduleInterval,
                 start_time_morning: settings.startTimeMorning,
                 start_time_afternoon: settings.startTimeAfternoon,
-                max_tasks_per_day: settings.maxTasksPerDay,
+                max_tasks_per_day: settings.maxTasksPerDay
             });
 
         if (error) throw error;
-    },
-
-    /**
-     * 全タスクを取得
-     */
-    async getAllTasks(): Promise<Task[]> {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return [];
-
-        const { data, error } = await supabase
-            .from('tasks')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        return (data || []).map(rowToTask);
     },
 
     /**

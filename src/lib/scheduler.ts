@@ -161,12 +161,17 @@ export function findNextHolidays(
     return holidays;
 }
 
+// ... (imports)
+
+// ... (other functions: isHoliday, getPreviousWorkEndTime, scheduleTasksForHoliday, findNextHolidays)
+
 /**
  * 未完了タスクを再スケジュールする
  * 
  * 全ての未完了タスク（プール + 未完了スケジュール済み）を優先度順に並べ替え、
  * 未来の休日に再配置する。
  * 完了済みのスケジュール済みタスクは動かさない。
+ * 手動で日時指定されたタスク(manualDate)は、その日時に固定して配置する。
  */
 export function reschedulePendingTasks(
     allTasks: Task[],
@@ -185,8 +190,8 @@ export function reschedulePendingTasks(
     // 2. まだ完了していないタスクを抽出（これらが再スケジュールの対象）
     const pendingTasks = allTasks.filter(t => !completedTaskIds.has(t.id));
 
-    // 優先度順にソート (優先度高い順 > 作成日古い順)
-    pendingTasks.sort((a, b) => {
+    // 自動スケジューリング対象タスク (優先度順)
+    const autoTasks = pendingTasks.sort((a, b) => {
         if (b.priority !== a.priority) return b.priority - a.priority;
         return a.createdAt - b.createdAt;
     });
@@ -200,7 +205,6 @@ export function reschedulePendingTasks(
     const newSchedules: ScheduledTask[] = [];
 
     // 保持するスケジュール（完了済み）をベースにする
-    // これらはスロットを占有する
     const currentAllocation = [...completedSchedules];
 
     let taskIndex = 0;
@@ -208,17 +212,17 @@ export function reschedulePendingTasks(
     let searchDate = startOfDay(today);
     let daysSearched = 0;
 
-    while (taskIndex < pendingTasks.length && daysSearched < 90) {
+    while (taskIndex < autoTasks.length && daysSearched < 90) {
         if (isHoliday(searchDate, events)) {
-            // この日の既存タスク（完了済みなど）
+            // この日の既存タスク（完了済み）
             const dayExisting = currentAllocation.filter(t => isSameDay(new Date(t.scheduledTime), searchDate));
 
             // 空きスロット数 (設定された1日の最大数 - 既存数)
-            const slotsAvailable = settings.maxTasksPerDay - dayExisting.length;
+            const slotsAvailable = Math.max(0, settings.maxTasksPerDay - dayExisting.length);
 
             if (slotsAvailable > 0) {
                 // この日に割り当てるタスク
-                const chunk = pendingTasks.slice(taskIndex, taskIndex + slotsAvailable);
+                const chunk = autoTasks.slice(taskIndex, taskIndex + slotsAvailable);
 
                 // スケジュール実行
                 const scheduled = scheduleTasksForHoliday(searchDate, chunk, events, settings, dayExisting);
