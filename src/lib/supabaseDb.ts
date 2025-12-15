@@ -288,7 +288,7 @@ export const supabaseDb = {
                     user_id: user.id,
                     task_id: task.taskId,
                     title: task.title,
-                    priority: task.priority ?? null,
+                    priority: task.priority ?? 3, // デフォルト優先度: 3 (NOT NULL制約対策)
                     scheduled_time: new Date(task.scheduledTime).toISOString(),
                     is_completed: task.isCompleted,
                     notified_at: task.notifiedAt ? new Date(task.notifiedAt).toISOString() : null,
