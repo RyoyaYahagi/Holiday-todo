@@ -10,6 +10,7 @@ import { Login } from './components/Login';
 
 import { Modal } from './components/Modal';
 import { Tutorial } from './components/Tutorial';
+import type { Task } from './types'; // Ensure Task is imported
 
 function App() {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -32,6 +33,7 @@ function App() {
 
   const [activeTab, setActiveTab] = useState<'tasks' | 'calendar' | 'settings'>('tasks');
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null); // 編集中のタスク
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
 
   useEffect(() => {
@@ -62,6 +64,21 @@ function App() {
     if (targetTask) {
       await updateTask({ ...targetTask, priority: newPriority });
     }
+  };
+
+  // タスク編集開始
+  const handleEditTask = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      setEditingTask(task);
+      setIsTaskModalOpen(true);
+    }
+  };
+
+  // モーダルを閉じる
+  const closeTaskModal = () => {
+    setIsTaskModalOpen(false);
+    setEditingTask(null);
   };
 
   // 認証読み込み中
@@ -100,6 +117,7 @@ function App() {
               onDelete={deleteTask}
               onComplete={completeTask}
               onUpdatePriority={handlePriorityChange}
+              onEdit={handleEditTask}
               maxPriority={settings.maxPriority}
             />
 
@@ -110,17 +128,34 @@ function App() {
               </button>
             </div>
 
-            {/* Task Add Modal */}
+            {/* Task Add/Edit Modal */}
             <Modal
               isOpen={isTaskModalOpen}
-              onClose={() => setIsTaskModalOpen(false)}
-              title="新規タスク追加"
+              onClose={closeTaskModal}
+              title={editingTask ? "タスクを編集" : "新規タスク追加"}
             >
               <TaskForm
-                onAdd={async (title, scheduleType, options) => {
-                  await addTask(title, scheduleType, options);
-                  setIsTaskModalOpen(false);
+                initialData={editingTask || undefined}
+                buttonLabel={editingTask ? "保存" : "追加"}
+                onSave={async (title, scheduleType, options) => {
+                  if (editingTask) {
+                    // 更新
+                    const updatedTask: Task = {
+                      ...editingTask,
+                      title,
+                      scheduleType,
+                      priority: options?.priority,
+                      manualScheduledTime: options?.manualScheduledTime,
+                      recurrence: options?.recurrence
+                    };
+                    await updateTask(updatedTask);
+                  } else {
+                    // 新規追加
+                    await addTask(title, scheduleType, options);
+                  }
+                  closeTaskModal();
                 }}
+                onCancel={closeTaskModal}
                 maxPriority={settings.maxPriority}
               />
             </Modal>

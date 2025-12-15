@@ -188,9 +188,11 @@ export const supabaseDb = {
                 id: task.id,
                 user_id: user.id,
                 title: task.title,
-                priority: task.priority ?? 3, // デフォルト優先度: 3 (NOT NULL制約対策)
-                created_at: new Date(task.createdAt).toISOString()
-                // 新カラム(schedule_type, manual_scheduled_time, recurrence)はSupabase側に追加後に有効化
+                priority: task.priority ?? 3,
+                created_at: new Date(task.createdAt).toISOString(),
+                schedule_type: task.scheduleType,
+                manual_scheduled_time: task.manualScheduledTime ? new Date(task.manualScheduledTime).toISOString() : null,
+                recurrence: task.recurrence || null
             });
 
         if (error) throw error;
@@ -204,8 +206,10 @@ export const supabaseDb = {
             .from('tasks')
             .update({
                 title: task.title,
-                priority: task.priority ?? 3 // デフォルト優先度: 3 (NOT NULL制約対策)
-                // 新カラム(schedule_type, manual_scheduled_time, recurrence)はSupabase側に追加後に有効化
+                priority: task.priority ?? 3,
+                schedule_type: task.scheduleType,
+                manual_scheduled_time: task.manualScheduledTime ? new Date(task.manualScheduledTime).toISOString() : null,
+                recurrence: task.recurrence || null
             })
             .eq('id', task.id);
 
@@ -288,12 +292,15 @@ export const supabaseDb = {
                     user_id: user.id,
                     task_id: task.taskId,
                     title: task.title,
-                    priority: task.priority ?? 3, // デフォルト優先度: 3 (NOT NULL制約対策)
+                    priority: task.priority ?? 3,
                     scheduled_time: new Date(task.scheduledTime).toISOString(),
                     is_completed: task.isCompleted,
                     notified_at: task.notifiedAt ? new Date(task.notifiedAt).toISOString() : null,
-                    created_at: new Date(task.createdAt).toISOString()
-                    // 新カラム(schedule_type, manual_scheduled_time, recurrence, recurrence_source_id)はSupabase側に追加後に有効化
+                    created_at: new Date(task.createdAt).toISOString(),
+                    schedule_type: task.scheduleType,
+                    manual_scheduled_time: task.manualScheduledTime ? new Date(task.manualScheduledTime).toISOString() : null,
+                    recurrence: task.recurrence || null,
+                    recurrence_source_id: task.recurrenceSourceId || null
                 });
 
             if (error) {

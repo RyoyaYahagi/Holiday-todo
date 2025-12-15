@@ -9,10 +9,11 @@ interface TaskListProps {
     onDelete: (id: string) => void;
     onComplete: (id: string) => void;
     onUpdatePriority: (id: string, priority: Priority) => void;
+    onEdit?: (id: string) => void;
     maxPriority?: number;
 }
 
-export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDelete, onComplete, onUpdatePriority, maxPriority = 5 }) => {
+export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDelete, onComplete, onUpdatePriority, onEdit, maxPriority = 5 }) => {
     // 日付フォーマッター
     const getTaskDateLabel = (date: Date) => {
         if (isYesterday(date)) return <span className="date-text overdue">昨日 (期限切れ)</span>;
@@ -59,6 +60,7 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDel
             case 'time': return '🕐';
             case 'recurrence': return '🔁';
             case 'priority': return '⭐';
+            case 'none': return '📝';
             default: return '📝';
         }
     };
@@ -75,7 +77,11 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDel
                     onClick={() => isScheduled && onComplete(item.id)} // ScheduledTaskのIDを渡す
                     style={{ cursor: isScheduled ? 'pointer' : 'default', borderColor: isScheduled ? '#ddd' : '#eee' }}
                 />
-                <div className="task-content-clean">
+                <div
+                    className="task-content-clean"
+                    onClick={() => onEdit && onEdit(realTaskId)}
+                    style={{ cursor: onEdit ? 'pointer' : 'default' }}
+                >
                     <div className={`task-title-clean ${isCompleted ? 'completed' : ''}`}>
                         <span className="task-type-icon">{getScheduleTypeIcon(item.scheduleType)}</span>
                         {item.title}
@@ -90,7 +96,10 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDel
                         <select
                             className={`priority-badge p-${item.priority ? Math.min(item.priority, maxPriority) : 0}`}
                             value={item.priority ? Math.min(item.priority, maxPriority) : ''}
-                            onChange={(e) => onUpdatePriority(realTaskId, parseInt(e.target.value) as Priority)}
+                            onChange={(e) => {
+                                e.stopPropagation();
+                                onUpdatePriority(realTaskId, parseInt(e.target.value) as Priority);
+                            }}
                             style={{ border: 'none', cursor: 'pointer', outline: 'none', fontSize: '0.75rem' }}
                             onClick={(e) => e.stopPropagation()}
                             disabled={!item.priority}
