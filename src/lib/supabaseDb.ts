@@ -188,7 +188,7 @@ export const supabaseDb = {
                 id: task.id,
                 user_id: user.id,
                 title: task.title,
-                priority: task.priority ?? 3,
+                priority: task.priority ?? null,
                 created_at: new Date(task.createdAt).toISOString(),
                 schedule_type: task.scheduleType,
                 manual_scheduled_time: task.manualScheduledTime ? new Date(task.manualScheduledTime).toISOString() : null,
@@ -206,7 +206,7 @@ export const supabaseDb = {
             .from('tasks')
             .update({
                 title: task.title,
-                priority: task.priority ?? 3,
+                priority: task.priority ?? null,
                 schedule_type: task.scheduleType,
                 manual_scheduled_time: task.manualScheduledTime ? new Date(task.manualScheduledTime).toISOString() : null,
                 recurrence: task.recurrence || null
@@ -292,7 +292,7 @@ export const supabaseDb = {
                     user_id: user.id,
                     task_id: task.taskId,
                     title: task.title,
-                    priority: task.priority ?? 3,
+                    priority: task.priority ?? null,
                     scheduled_time: new Date(task.scheduledTime).toISOString(),
                     is_completed: task.isCompleted,
                     notified_at: task.notifiedAt ? new Date(task.notifiedAt).toISOString() : null,
