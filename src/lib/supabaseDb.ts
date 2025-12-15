@@ -188,7 +188,7 @@ export const supabaseDb = {
                 id: task.id,
                 user_id: user.id,
                 title: task.title,
-                priority: task.priority ?? null,
+                priority: task.priority ?? 3, // デフォルト優先度: 3 (NOT NULL制約対策)
                 created_at: new Date(task.createdAt).toISOString()
                 // 新カラム(schedule_type, manual_scheduled_time, recurrence)はSupabase側に追加後に有効化
             });
@@ -204,7 +204,7 @@ export const supabaseDb = {
             .from('tasks')
             .update({
                 title: task.title,
-                priority: task.priority ?? null
+                priority: task.priority ?? 3 // デフォルト優先度: 3 (NOT NULL制約対策)
                 // 新カラム(schedule_type, manual_scheduled_time, recurrence)はSupabase側に追加後に有効化
             })
             .eq('id', task.id);
