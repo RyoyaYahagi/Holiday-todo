@@ -191,7 +191,7 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
                 <h2>{format(currentDate, 'yyyy年 M月', { locale: ja })}</h2>
                 <button onClick={nextMonth}>&gt;</button>
             </div>
-            <p className="calendar-hint" style={{ fontSize: '0.75rem', color: '#888', textAlign: 'center', marginBottom: '0.5rem' }}>
+            <p className="calendar-hint" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', marginBottom: '0.5rem' }}>
                 日付をタップして詳細を表示
             </p>
             <div className="calendar-grid">
@@ -227,14 +227,15 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
                         className="day-detail-modal"
                         onClick={(e) => e.stopPropagation()}
                         style={{
-                            backgroundColor: 'white',
+                            backgroundColor: 'var(--card-bg)',
+                            color: 'var(--text-primary)',
                             borderRadius: '12px',
                             padding: '1.5rem',
                             maxWidth: '90%',
                             width: '400px',
                             maxHeight: '80vh',
                             overflow: 'auto',
-                            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)'
+                            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.4)'
                         }}
                     >
                         {/* モーダルヘッダー */}
@@ -258,11 +259,11 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
 
                         {/* 予定 */}
                         <section style={{ marginBottom: '1rem' }}>
-                            <h4 style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem', borderBottom: '1px solid #eee', paddingBottom: '0.3rem' }}>
+                            <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.3rem' }}>
                                 📋 予定
                             </h4>
                             {selectedDayDetails.events.length === 0 ? (
-                                <p style={{ color: '#999', fontSize: '0.9rem' }}>予定なし（休日）</p>
+                                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>予定なし（休日）</p>
                             ) : (
                                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                                     {selectedDayDetails.events.map((event, i) => (
@@ -270,7 +271,7 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
                                             key={i}
                                             style={{
                                                 padding: '0.5rem 0',
-                                                borderBottom: '1px solid #f5f5f5',
+                                                borderBottom: '1px solid var(--border-color)',
                                                 cursor: onEditEvent ? 'pointer' : 'default'
                                             }}
                                             onClick={() => onEditEvent && onEditEvent(event)}
@@ -289,9 +290,9 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
                                                     {getEventTypeLabel(event.eventType)}
                                                 </span>
                                             </div>
-                                            <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
+                                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
                                                 {format(event.start, 'HH:mm')} - {format(event.end, 'HH:mm')}
-                                                {onEditEvent && <span style={{ marginLeft: '0.5rem', color: '#999' }}>タップで編集</span>}
+                                                {onEditEvent && <span style={{ marginLeft: '0.5rem', color: 'var(--text-muted)' }}>タップで編集</span>}
                                             </div>
                                         </li>
                                     ))}
@@ -307,12 +308,12 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
                                     style={{
                                         marginTop: '0.5rem',
                                         padding: '0.5rem 1rem',
-                                        border: '1px dashed #ccc',
+                                        border: '1px dashed var(--border-color)',
                                         borderRadius: '8px',
-                                        background: 'white',
+                                        background: 'var(--card-bg)',
                                         cursor: 'pointer',
                                         width: '100%',
-                                        color: '#666'
+                                        color: 'var(--text-secondary)'
                                     }}
                                 >
                                     + 予定を追加
@@ -322,11 +323,11 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
 
                         {/* タスク */}
                         <section style={{ marginBottom: '1.5rem' }}>
-                            <h4 style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem', borderBottom: '1px solid #eee', paddingBottom: '0.3rem' }}>
+                            <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.3rem' }}>
                                 ✅ タスク
                             </h4>
                             {selectedDayDetails.tasks.length === 0 ? (
-                                <p style={{ color: '#999', fontSize: '0.9rem' }}>タスクなし</p>
+                                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>タスクなし</p>
                             ) : (
                                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                                     {selectedDayDetails.tasks.map(task => (
@@ -334,7 +335,7 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
                                             key={task.id}
                                             style={{
                                                 padding: '0.5rem 0',
-                                                borderBottom: '1px solid #f5f5f5',
+                                                borderBottom: '1px solid var(--border-color)',
                                                 opacity: task.isCompleted ? 0.6 : 1,
                                                 textDecoration: task.isCompleted ? 'line-through' : 'none'
                                             }}
@@ -351,7 +352,7 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
                                                 </span>
                                                 <span style={{ flex: 1 }}>{task.title}</span>
                                             </div>
-                                            <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.2rem' }}>
+                                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
                                                 {format(new Date(task.scheduledTime), 'HH:mm')}
                                                 {task.isCompleted && ' ✓ 完了'}
                                             </div>
@@ -364,7 +365,7 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
                         {/* 自動スケジュール設定 */}
                         {onToggleExclude && (
                             <section style={{
-                                borderTop: '2px solid #eee',
+                                borderTop: '2px solid var(--border-color)',
                                 paddingTop: '1rem',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -372,7 +373,7 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
                             }}>
                                 <div>
                                     <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>自動スケジュール</div>
-                                    <div style={{ fontSize: '0.75rem', color: '#888' }}>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                         {selectedDayDetails.isExcluded
                                             ? '🚫 除外中（タップで解除）'
                                             : selectedDayDetails.isForceIncluded

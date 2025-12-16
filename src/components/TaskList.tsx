@@ -102,21 +102,21 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDel
                     <div className="task-meta-clean">
                         {isScheduled && item.scheduleType !== 'none' ? (
                             isCompleted ? (
-                                <span className="date-text" style={{ color: '#888' }}>
+                                <span className="date-text" style={{ color: 'var(--text-muted)' }}>
                                     完了日: {format(new Date(item.scheduledTime), 'M月d日(eee)', { locale: ja })}
                                 </span>
                             ) : (
                                 getTaskDateLabel(new Date(item.scheduledTime))
                             )
                         ) : (
-                            <span className="date-text" style={{ fontSize: '0.8rem', color: '#999' }}>未定</span>
+                            <span className="date-text" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>未定</span>
                         )}
 
                         {/* 繰り返し情報の表示 */}
                         {item.recurrence && (
                             <>
-                                <span style={{ margin: '0 0.5rem', color: '#eee' }}>|</span>
-                                <span className="recurrence-info" style={{ fontSize: '0.75rem', color: '#666', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                <span style={{ margin: '0 0.5rem', color: 'var(--border-color)' }}>|</span>
+                                <span className="recurrence-info" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '2px' }}>
                                     🔁 {formatRecurrence(item.recurrence)}
                                 </span>
                             </>
@@ -124,7 +124,7 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDel
 
                         {!isCompleted && (
                             <>
-                                <span style={{ margin: '0 0.5rem', color: '#eee' }}>|</span>
+                                <span style={{ margin: '0 0.5rem', color: 'var(--border-color)' }}>|</span>
                                 <select
                                     className={`priority-badge p-${item.priority ? Math.min(item.priority, maxPriority) : 0}`}
                                     value={item.priority ? Math.min(item.priority, maxPriority) : ''}
@@ -174,7 +174,7 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDel
             {/* 今日のタスク */}
             {dueTasks.length > 0 && (
                 <div className="task-group mb-6">
-                    <h3 style={{ fontSize: '1.1rem', color: '#333', marginBottom: '0.8rem', paddingLeft: '0.5rem', borderLeft: '4px solid #4a90e2' }}>
+                    <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', marginBottom: '0.8rem', paddingLeft: '0.5rem', borderLeft: '4px solid var(--primary-color)' }}>
                         今日
                     </h3>
                     <ul className="task-list-clean">
@@ -186,7 +186,7 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDel
             {/* それ以外のタスク */}
             {(futureScheduled.length > 0 || sortedUnscheduled.length > 0) && (
                 <div className="task-group">
-                    <h3 style={{ fontSize: '1.1rem', color: '#666', marginBottom: '0.8rem', paddingLeft: '0.5rem', borderLeft: '4px solid #ccc' }}>
+                    <h3 style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: '0.8rem', paddingLeft: '0.5rem', borderLeft: '4px solid var(--border-color)' }}>
                         今後の予定
                     </h3>
                     <ul className="task-list-clean">
@@ -207,12 +207,12 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDel
                             justifyContent: 'space-between',
                             alignItems: 'center',
                             padding: '0.8rem 1rem',
-                            background: '#f5f5f5',
-                            border: '1px solid #e0e0e0',
+                            background: 'var(--bg-secondary)',
+                            border: '1px solid var(--border-color)',
                             borderRadius: '8px',
                             cursor: 'pointer',
                             fontSize: '1rem',
-                            color: '#666',
+                            color: 'var(--text-secondary)',
                         }}
                     >
                         <span>✓ 完了（{sortedCompleted.length}件）</span>
