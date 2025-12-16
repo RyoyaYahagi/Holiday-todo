@@ -484,6 +484,37 @@ function App() {
                 {originalEvent ? '保存' : '追加'}
               </button>
             </div>
+
+            {/* 削除ボタン（既存イベント編集時のみ表示） */}
+            {originalEvent && (
+              <button
+                onClick={async () => {
+                  if (window.confirm('この予定を削除しますか？')) {
+                    // オリジナルの開始時刻とタイトルで特定して削除
+                    const filteredEvents = events.filter(e =>
+                      !(e.start.getTime() === originalEvent.start.getTime() &&
+                        e.title === originalEvent.title)
+                    );
+                    await saveEvents(filteredEvents);
+                    setIsEventModalOpen(false);
+                    setEditingEvent(null);
+                    setOriginalEvent(null);
+                  }
+                }}
+                style={{
+                  marginTop: '0.5rem',
+                  padding: '0.8rem',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: '#ff3b30',
+                  color: 'white',
+                  cursor: 'pointer',
+                  width: '100%'
+                }}
+              >
+                🗑️ この予定を削除
+              </button>
+            )}
           </div>
         )}
       </Modal>
