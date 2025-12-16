@@ -122,22 +122,20 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDel
                             </>
                         )}
 
-                        {!isCompleted && (
+                        {!isCompleted && item.priority && (
                             <>
                                 <span style={{ margin: '0 0.5rem', color: 'var(--border-color)' }}>|</span>
                                 <select
-                                    className={`priority-badge p-${item.priority ? Math.min(item.priority, maxPriority) : 0}`}
-                                    value={item.priority ? Math.min(item.priority, maxPriority) : ''}
+                                    className={`priority-badge p-${Math.min(item.priority, maxPriority)}`}
+                                    value={Math.min(item.priority, maxPriority)}
                                     onChange={(e) => {
                                         e.stopPropagation();
                                         onUpdatePriority(realTaskId, parseInt(e.target.value) as Priority);
                                     }}
                                     style={{ border: 'none', cursor: 'pointer', outline: 'none', fontSize: '0.75rem' }}
                                     onClick={(e) => e.stopPropagation()}
-                                    disabled={!item.priority}
                                 >
-                                    {/* 優先度がない場合は選択できないようにするか、P0などを出すか。ここでは非表示はせず操作不能に */}
-                                    {item.priority ? Array.from({ length: maxPriority }, (_, i) => i + 1).map(p => <option key={p} value={p} style={{ color: 'black' }}>P{p}</option>) : <option value="">-</option>}
+                                    {Array.from({ length: maxPriority }, (_, i) => i + 1).map(p => <option key={p} value={p} style={{ color: 'black' }}>P{p}</option>)}
                                 </select>
                             </>
                         )}

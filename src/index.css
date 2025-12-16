@@ -524,8 +524,8 @@ input[type="file"] {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  background: #e8f4e8;
-  color: #2d7d32;
+  background: #e0e0e0;
+  color: #333333;
   border-radius: 2px;
   margin-bottom: 1px;
   padding: 1px 2px;
