@@ -14,13 +14,14 @@ export function formatRecurrence(rule?: RecurrenceRule): string {
             return intervalText ? `${intervalText}日ごと` : '毎日';
         case 'weekdays':
             return '平日（月〜金）';
-        case 'weekly':
+        case 'weekly': {
             const dayMap = ['日', '月', '火', '水', '木', '金', '土'];
             const days = daysOfWeek
                 ? daysOfWeek.map(d => dayMap[d]).join('・')
                 : '';
             const prefix = intervalText ? `${intervalText}週間ごと` : '毎週';
             return days ? `${prefix} ${days}曜日` : prefix;
+        }
         case 'monthly':
             const date = dayOfMonth ? `${dayOfMonth}日` : '';
             return intervalText ? `${intervalText}ヶ月ごとの${date}` : `毎月 ${date}`;
