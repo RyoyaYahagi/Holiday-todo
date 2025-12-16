@@ -250,7 +250,7 @@ Deno.serve(async (req) => {
         // 2) タスク開始前通知のチェック
         console.log(`[notify-discord] タスク通知チェック: enabled=${settings.notify_before_task}, 分前=${settings.notify_before_task_minutes}`)
 
-        if (settings.notify_before_task && settings.notify_before_task_minutes > 0) {
+        if (settings.notify_before_task && settings.notify_before_task_minutes >= 0) {
             // 現在時刻からN分後のタスクを探す
             const targetTime = new Date(now.getTime() + settings.notify_before_task_minutes * 60 * 1000)
             const targetJSTH = (targetTime.getUTCHours() + 9) % 24
