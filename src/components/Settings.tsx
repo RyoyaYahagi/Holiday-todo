@@ -343,10 +343,9 @@ export const Settings: React.FC<SettingsProps> = ({
                             value={localSettings.notifyDayBeforeTime}
                             onChange={(e) => setLocalSettings({ ...localSettings, notifyDayBeforeTime: e.target.value })}
                             disabled={!localSettings.notifyOnDayBefore}
-                            className="time-input"
-                            style={{ padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }}
+                            style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #ccc', width: '90px' }}
                         />
-                        <span>に通知する</span>
+                        <span>に通知</span>
                     </label>
                 </div>
                 <div className="checkbox-group">
@@ -357,16 +356,21 @@ export const Settings: React.FC<SettingsProps> = ({
                             onChange={(e) => setLocalSettings({ ...localSettings, notifyBeforeTask: e.target.checked })}
                         />
                         <span>タスク開始</span>
-                        <input
-                            type="number"
-                            min="5"
-                            max="120"
+                        <select
                             value={localSettings.notifyBeforeTaskMinutes}
-                            onChange={(e) => setLocalSettings({ ...localSettings, notifyBeforeTaskMinutes: parseInt(e.target.value) || 30 })}
+                            onChange={(e) => setLocalSettings({ ...localSettings, notifyBeforeTaskMinutes: parseInt(e.target.value) })}
                             disabled={!localSettings.notifyBeforeTask}
-                            style={{ width: '60px', padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }}
-                        />
-                        <span>分前に通知する</span>
+                            style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                        >
+                            <option value={0}>なし</option>
+                            <option value={5}>5分前</option>
+                            <option value={10}>10分前</option>
+                            <option value={15}>15分前</option>
+                            <option value={30}>30分前</option>
+                            <option value={45}>45分前</option>
+                            <option value={60}>60分前</option>
+                        </select>
+                        <span>に通知</span>
                     </label>
                 </div>
 
@@ -391,15 +395,21 @@ export const Settings: React.FC<SettingsProps> = ({
                 </p>
 
                 <div className="form-group">
-                    <label>タスクの時間間隔（時間）</label>
+                    <label>タスクの時間間隔</label>
                     <select
                         value={localSettings.scheduleInterval}
-                        onChange={(e) => setLocalSettings({ ...localSettings, scheduleInterval: parseInt(e.target.value) })}
+                        onChange={(e) => setLocalSettings({ ...localSettings, scheduleInterval: parseFloat(e.target.value) })}
                         style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginLeft: '10px' }}
                     >
-                        {[1, 2, 3, 4, 5, 6].map(h => (
-                            <option key={h} value={h}>{h}時間</option>
-                        ))}
+                        <option value={0.5}>30分</option>
+                        <option value={1}>1時間</option>
+                        <option value={1.5}>1時間半</option>
+                        <option value={2}>2時間</option>
+                        <option value={2.5}>2時間半</option>
+                        <option value={3}>3時間</option>
+                        <option value={4}>4時間</option>
+                        <option value={5}>5時間</option>
+                        <option value={6}>6時間</option>
                     </select>
                 </div>
 
