@@ -4,6 +4,7 @@ import { IcsParser } from '../lib/icsParser';
 import { GoogleCalendarClient } from '../lib/googleCalendar';
 import { sendDiscordNotification } from '../lib/discordWebhook';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme, type Theme } from '../hooks/useTheme';
 
 interface SettingsProps {
     settings: AppSettings;
@@ -36,6 +37,44 @@ export const Settings: React.FC<SettingsProps> = ({
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [googleSyncStatus, setGoogleSyncStatus] = useState<string>('');
     const [isGoogleSyncing, setIsGoogleSyncing] = useState(false);
+
+    // テーマ切り替えコンポーネント
+    const ThemeSelector: React.FC = () => {
+        const { theme, setTheme } = useTheme();
+        const themeOptions: { value: Theme; label: string; icon: string }[] = [
+            { value: 'light', label: 'ライト', icon: '☀️' },
+            { value: 'dark', label: 'ダーク', icon: '🌙' },
+            { value: 'system', label: 'システム', icon: '💻' }
+        ];
+
+        return (
+            <section className="settings-section">
+                <h3>🎨 テーマ設定</h3>
+                <p className="description">
+                    画面の明るさを切り替えます。
+                </p>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {themeOptions.map(opt => (
+                        <button
+                            key={opt.value}
+                            onClick={() => setTheme(opt.value)}
+                            className={theme === opt.value ? 'btn-primary' : 'btn-secondary'}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.3rem',
+                                padding: '0.5rem 0.75rem',
+                                fontSize: '0.9rem'
+                            }}
+                        >
+                            <span>{opt.icon}</span>
+                            <span>{opt.label}</span>
+                        </button>
+                    ))}
+                </div>
+            </section>
+        );
+    };
 
     /**
      * Googleカレンダーからイベントを同期
@@ -210,6 +249,9 @@ export const Settings: React.FC<SettingsProps> = ({
 
     return (
         <div className="settings-container">
+            {/* テーマ設定 */}
+            <ThemeSelector />
+
             {/* チュートリアル・ヘルプ */}
             {(onShowTutorial || onShowHelp) && (
                 <section className="settings-section">

@@ -1,18 +1,20 @@
 :root {
+  /* ライトモード - 眩しくないグレー系 */
   --primary-color: #4a90e2;
   --primary-dark: #357abd;
-  --secondary-color: #f5f7fa;
-  --text-primary: #333333;
-  --text-secondary: #666666;
-  --text-muted: #999999;
-  --danger-color: #e74c3c;
-  --success-color: #2ecc71;
-  --bg-color: #ffffff;
-  --bg-secondary: #f8f9fa;
+  --secondary-color: #f0f2f5;
+  --text-primary: #1a1a1a;
+  --text-secondary: #5a5a5a;
+  --text-muted: #888888;
+  --danger-color: #dc3545;
+  --success-color: #28a745;
+  --bg-color: #f5f5f5;
+  --bg-secondary: #e8e8e8;
   --card-bg: #ffffff;
-  --border-color: #e0e0e0;
-  --shawdow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --border-color: #d0d0d0;
+  --input-bg: #ffffff;
+  --shawdow-sm: 0 2px 4px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.12);
   --radius-md: 12px;
   --radius-lg: 16px;
 
@@ -24,28 +26,48 @@
 
   --work-yakin: #8e44ad;
   --work-nikkin: #3498db;
-  --work-yasumi: #e74c3c;
+  --work-yasumi: #27ae60;
 
   --safe-area-bottom: env(safe-area-inset-bottom);
 }
 
-/* ダークモード対応 */
+/* ダークモード - 目に優しい設計 */
+[data-theme="dark"] {
+  --primary-color: #6eb5ff;
+  --primary-dark: #5a9fd4;
+  --secondary-color: #1e1e2e;
+  --text-primary: #ffffff;
+  --text-secondary: #c0c0c0;
+  --text-muted: #808080;
+  --danger-color: #ff6b6b;
+  --success-color: #69db7c;
+  --bg-color: #121220;
+  --bg-secondary: #1e1e2e;
+  --card-bg: #252538;
+  --border-color: #3a3a50;
+  --input-bg: #2a2a3c;
+  --shawdow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* システム設定に従う（デフォルト） */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --primary-color: #5c9ce6;
-    --primary-dark: #4a90e2;
-    --secondary-color: #1a1a2e;
-    --text-primary: #e8e8e8;
-    --text-secondary: #b0b0b0;
-    --text-muted: #707070;
+  :root:not([data-theme="light"]) {
+    --primary-color: #6eb5ff;
+    --primary-dark: #5a9fd4;
+    --secondary-color: #1e1e2e;
+    --text-primary: #ffffff;
+    --text-secondary: #c0c0c0;
+    --text-muted: #808080;
     --danger-color: #ff6b6b;
-    --success-color: #4ade80;
-    --bg-color: #0f0f1a;
-    --bg-secondary: #1a1a2e;
-    --card-bg: #1e1e32;
-    --border-color: #2a2a40;
-    --shawdow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+    --success-color: #69db7c;
+    --bg-color: #121220;
+    --bg-secondary: #1e1e2e;
+    --card-bg: #252538;
+    --border-color: #3a3a50;
+    --input-bg: #2a2a3c;
+    --shawdow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.5);
   }
 }
 
