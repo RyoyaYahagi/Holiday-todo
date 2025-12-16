@@ -1,4 +1,4 @@
-import { RecurrenceRule } from '../types';
+import type { RecurrenceRule } from '../types';
 
 /**
  * 繰り返しルールを日本語の文字列に変換する
