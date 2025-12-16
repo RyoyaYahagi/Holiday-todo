@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     format,
     startOfMonth,
@@ -25,17 +25,6 @@ interface CalendarProps {
 }
 
 /**
- * 日付詳細モーダルの情報
- */
-interface DayDetailModal {
-    date: Date;
-    events: WorkEvent[];
-    tasks: ScheduledTask[];
-    isExcluded: boolean;
-    isDayHoliday: boolean;
-}
-
-/**
  * カレンダーコンポーネント
  * 
  * イベントとスケジュール済みタスクを表示する。
@@ -43,7 +32,8 @@ interface DayDetailModal {
  */
 export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onToggleExclude }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [selectedDay, setSelectedDay] = useState<DayDetailModal | null>(null);
+    // 選択された日付のみを保持（詳細はevents/scheduledTasksから動的に取得）
+    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(monthStart);
@@ -59,40 +49,49 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
     const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
 
     /**
+     * 選択された日の詳細情報をpropsから動的に計算
+     * eventsやscheduledTasksが更新されると自動的に再計算される
+     */
+    const selectedDayDetails = useMemo(() => {
+        if (!selectedDate) return null;
+
+        const dayEvents = events.filter(e => isSameDay(e.start, selectedDate));
+        const dayTasks = scheduledTasks.filter(t => isSameDay(new Date(t.scheduledTime), selectedDate));
+        const isExcluded = dayEvents.some(e => e.eventType === 'スケジュール除外');
+        const isDayHoliday = isHoliday(selectedDate, events);
+
+        return {
+            date: selectedDate,
+            events: dayEvents.filter(e => e.eventType !== 'スケジュール除外'),
+            tasks: dayTasks,
+            isExcluded,
+            isDayHoliday
+        };
+    }, [selectedDate, events, scheduledTasks]);
+
+    /**
      * 日付セルのクリックハンドラ - 詳細モーダルを開く
      * 
      * @param day - クリックされた日付
      */
     const handleDayClick = (day: Date) => {
-        const dayEvents = events.filter(e => isSameDay(e.start, day));
-        const dayTasks = scheduledTasks.filter(t => isSameDay(new Date(t.scheduledTime), day));
-        const isExcluded = dayEvents.some(e => e.eventType === 'スケジュール除外');
-        const isDayHoliday = isHoliday(day, events);
-
-        setSelectedDay({
-            date: startOfDay(day),
-            events: dayEvents.filter(e => e.eventType !== 'スケジュール除外'),
-            tasks: dayTasks,
-            isExcluded,
-            isDayHoliday
-        });
+        setSelectedDate(startOfDay(day));
     };
 
     /**
      * 詳細モーダルを閉じる
      */
     const closeModal = () => {
-        setSelectedDay(null);
+        setSelectedDate(null);
     };
 
     /**
      * 自動スケジュール除外をトグル
      */
     const handleToggleExclude = () => {
-        if (selectedDay && onToggleExclude) {
-            onToggleExclude(selectedDay.date);
-            // モーダルの状態を更新
-            setSelectedDay(prev => prev ? { ...prev, isExcluded: !prev.isExcluded } : null);
+        if (selectedDate && onToggleExclude) {
+            onToggleExclude(selectedDate);
+            // 状態の更新はpropsから自動的に反映される（useMemoで再計算）
         }
     };
 
@@ -184,7 +183,7 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
             </div>
 
             {/* 日付詳細モーダル */}
-            {selectedDay && (
+            {selectedDayDetails && (
                 <div
                     className="day-detail-overlay"
                     onClick={closeModal}
@@ -218,7 +217,7 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
                         {/* モーダルヘッダー */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                             <h3 style={{ margin: 0, fontSize: '1.2rem' }}>
-                                {format(selectedDay.date, 'M月d日(EEEE)', { locale: ja })}
+                                {format(selectedDayDetails.date, 'M月d日(EEEE)', { locale: ja })}
                             </h3>
                             <button
                                 onClick={closeModal}
@@ -239,11 +238,11 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
                             <h4 style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem', borderBottom: '1px solid #eee', paddingBottom: '0.3rem' }}>
                                 📋 勤務予定
                             </h4>
-                            {selectedDay.events.length === 0 ? (
+                            {selectedDayDetails.events.length === 0 ? (
                                 <p style={{ color: '#999', fontSize: '0.9rem' }}>予定なし（休日）</p>
                             ) : (
                                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                                    {selectedDay.events.map((event, i) => (
+                                    {selectedDayDetails.events.map((event, i) => (
                                         <li key={i} style={{ padding: '0.5rem 0', borderBottom: '1px solid #f5f5f5' }}>
                                             <div style={{ fontWeight: 'bold' }}>{getEventTypeLabel(event.eventType)}</div>
                                             <div style={{ fontSize: '0.85rem', color: '#666' }}>
@@ -260,11 +259,11 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
                             <h4 style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem', borderBottom: '1px solid #eee', paddingBottom: '0.3rem' }}>
                                 ✅ タスク
                             </h4>
-                            {selectedDay.tasks.length === 0 ? (
+                            {selectedDayDetails.tasks.length === 0 ? (
                                 <p style={{ color: '#999', fontSize: '0.9rem' }}>タスクなし</p>
                             ) : (
                                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                                    {selectedDay.tasks.map(task => (
+                                    {selectedDayDetails.tasks.map(task => (
                                         <li
                                             key={task.id}
                                             style={{
@@ -308,9 +307,9 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
                                 <div>
                                     <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>自動スケジュール</div>
                                     <div style={{ fontSize: '0.75rem', color: '#888' }}>
-                                        {selectedDay.isExcluded
+                                        {selectedDayDetails.isExcluded
                                             ? '🚫 この日は除外されています'
-                                            : selectedDay.isDayHoliday
+                                            : selectedDayDetails.isDayHoliday
                                                 ? '✅ この日は対象です'
                                                 : '⚠️ この日は勤務日のため対象外'}
                                     </div>
@@ -323,7 +322,7 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
                                     <div style={{
                                         width: '50px',
                                         height: '26px',
-                                        backgroundColor: selectedDay.isExcluded ? '#ccc' : '#4CAF50',
+                                        backgroundColor: selectedDayDetails.isExcluded ? '#ccc' : '#4CAF50',
                                         borderRadius: '13px',
                                         position: 'relative',
                                         transition: 'background-color 0.2s'
@@ -335,14 +334,14 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
                                             borderRadius: '50%',
                                             position: 'absolute',
                                             top: '2px',
-                                            left: selectedDay.isExcluded ? '2px' : '26px',
+                                            left: selectedDayDetails.isExcluded ? '2px' : '26px',
                                             transition: 'left 0.2s',
                                             boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                                         }} />
                                     </div>
                                     <input
                                         type="checkbox"
-                                        checked={!selectedDay.isExcluded}
+                                        checked={!selectedDayDetails.isExcluded}
                                         onChange={handleToggleExclude}
                                         style={{ display: 'none' }}
                                     />
