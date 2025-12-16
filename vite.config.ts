@@ -37,6 +37,21 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    // チャンクサイズ警告の制限を調整
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        // ベンダーライブラリを分割してメインチャンクを小さくする
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-query': ['@tanstack/react-query'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-datefns': ['date-fns']
+        }
+      }
+    }
+  },
   test: {
     environment: 'jsdom',
     globals: true,
