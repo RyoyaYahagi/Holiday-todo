@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Supabase Edge Function (Deno runtime)
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
