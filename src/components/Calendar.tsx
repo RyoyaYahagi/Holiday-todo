@@ -22,6 +22,10 @@ interface CalendarProps {
     scheduledTasks: ScheduledTask[];
     /** 日付の除外状態をトグルするコールバック（オプション） */
     onToggleExclude?: (date: Date) => void;
+    /** イベントを編集するコールバック（オプション） */
+    onEditEvent?: (event: WorkEvent) => void;
+    /** 新規イベントを追加するコールバック（オプション） */
+    onAddEvent?: (date: Date) => void;
 }
 
 /**
@@ -30,7 +34,7 @@ interface CalendarProps {
  * イベントとスケジュール済みタスクを表示する。
  * 日付セルをタップすると、詳細モーダルが表示される。
  */
-export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onToggleExclude }) => {
+export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onToggleExclude, onEditEvent, onAddEvent }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     // 選択された日付のみを保持（詳細はevents/scheduledTasksから動的に取得）
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -262,14 +266,57 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
                             ) : (
                                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                                     {selectedDayDetails.events.map((event, i) => (
-                                        <li key={i} style={{ padding: '0.5rem 0', borderBottom: '1px solid #f5f5f5' }}>
-                                            <div style={{ fontWeight: 'bold' }}>{getEventTypeLabel(event.eventType)}</div>
-                                            <div style={{ fontSize: '0.85rem', color: '#666' }}>
+                                        <li
+                                            key={i}
+                                            style={{
+                                                padding: '0.5rem 0',
+                                                borderBottom: '1px solid #f5f5f5',
+                                                cursor: onEditEvent ? 'pointer' : 'default'
+                                            }}
+                                            onClick={() => onEditEvent && onEditEvent(event)}
+                                        >
+                                            <div style={{ fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span>{event.title || getEventTypeLabel(event.eventType)}</span>
+                                                <span style={{
+                                                    fontSize: '0.75rem',
+                                                    padding: '2px 6px',
+                                                    borderRadius: '4px',
+                                                    background: event.eventType === '夜勤' ? '#5c6bc0' :
+                                                        event.eventType === '日勤' ? '#42a5f5' :
+                                                            event.eventType === '休み' ? '#66bb6a' : '#bdbdbd',
+                                                    color: 'white'
+                                                }}>
+                                                    {getEventTypeLabel(event.eventType)}
+                                                </span>
+                                            </div>
+                                            <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
                                                 {format(event.start, 'HH:mm')} - {format(event.end, 'HH:mm')}
+                                                {onEditEvent && <span style={{ marginLeft: '0.5rem', color: '#999' }}>タップで編集</span>}
                                             </div>
                                         </li>
                                     ))}
                                 </ul>
+                            )}
+                            {/* 予定追加ボタン */}
+                            {onAddEvent && (
+                                <button
+                                    onClick={() => {
+                                        setSelectedDate(null);
+                                        onAddEvent(selectedDayDetails.date);
+                                    }}
+                                    style={{
+                                        marginTop: '0.5rem',
+                                        padding: '0.5rem 1rem',
+                                        border: '1px dashed #ccc',
+                                        borderRadius: '8px',
+                                        background: 'white',
+                                        cursor: 'pointer',
+                                        width: '100%',
+                                        color: '#666'
+                                    }}
+                                >
+                                    + 予定を追加
+                                </button>
                             )}
                         </section>
 
