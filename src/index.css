@@ -533,12 +533,25 @@ select {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  background: #a0a0a0;
-  color: #1a1a1a;
+  background: #d4e9f7;
+  color: #1a5f9e;
   border-radius: 2px;
   margin-bottom: 1px;
   padding: 1px 2px;
   text-align: center;
+}
+
+/* ダークモード時のmini-task */
+[data-theme="dark"] .mini-task {
+  background: #3a4a5a;
+  color: #7ac4ed;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .mini-task {
+    background: #3a4a5a;
+    color: #7ac4ed;
+  }
 }
 
 /* Settings */
