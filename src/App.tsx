@@ -132,26 +132,45 @@ function App() {
   };
 
   /**
-   * カレンダー日付タップで自動スケジュール除外/復帰をトグル
+   * カレンダー日付タップで自動スケジュール対象/除外をトグル
+   * 
+   * - 休日（イベントなし or 休み）→ 除外にするには「スケジュール除外」を追加
+   * - 勤務日（日勤/夜勤/その他）→ 対象にするには「スケジュール対象」を追加
+   * - 既にカスタム設定がある場合 → 解除（元の状態に戻す）
    * 
    * @param date - タップされた日付
    */
   const handleToggleExclude = async (date: Date) => {
     const normalizedDate = startOfDay(date);
 
-    // 既存の除外イベントがあるか確認
-    const existingExcludeEvent = events.find(
-      e => e.eventType === 'スケジュール除外' && isSameDay(e.start, normalizedDate)
+    // この日のイベントを取得
+    const dayEvents = events.filter(e => isSameDay(e.start, normalizedDate));
+
+    // 既存のカスタム設定を確認
+    const existingExclude = dayEvents.find(e => e.eventType === 'スケジュール除外');
+    const existingInclude = dayEvents.find(e => e.eventType === 'スケジュール対象');
+
+    // 通常状態での休日判定（カスタム設定を除外して判定）
+    const normalDayEvents = dayEvents.filter(
+      e => e.eventType !== 'スケジュール除外' && e.eventType !== 'スケジュール対象'
     );
+    const isNormallyHoliday = normalDayEvents.length === 0 ||
+      normalDayEvents.some(e => e.eventType === '休み');
 
     let newEvents: WorkEvent[];
-    if (existingExcludeEvent) {
-      // 既存の除外を解除（削除）
+
+    if (existingExclude) {
+      // 除外設定を解除
       newEvents = events.filter(
         e => !(e.eventType === 'スケジュール除外' && isSameDay(e.start, normalizedDate))
       );
-    } else {
-      // 新規除外を追加
+    } else if (existingInclude) {
+      // 対象設定を解除
+      newEvents = events.filter(
+        e => !(e.eventType === 'スケジュール対象' && isSameDay(e.start, normalizedDate))
+      );
+    } else if (isNormallyHoliday) {
+      // 通常は休日 → 除外に変更
       const newExcludeEvent: WorkEvent = {
         title: 'スケジュール除外',
         start: normalizedDate,
@@ -159,6 +178,15 @@ function App() {
         eventType: 'スケジュール除外'
       };
       newEvents = [...events, newExcludeEvent];
+    } else {
+      // 通常は勤務日 → 対象に変更
+      const newIncludeEvent: WorkEvent = {
+        title: 'スケジュール対象',
+        start: normalizedDate,
+        end: normalizedDate,
+        eventType: 'スケジュール対象'
+      };
+      newEvents = [...events, newIncludeEvent];
     }
 
     await saveEvents(newEvents);

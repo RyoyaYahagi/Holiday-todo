@@ -58,14 +58,25 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
         const dayEvents = events.filter(e => isSameDay(e.start, selectedDate));
         const dayTasks = scheduledTasks.filter(t => isSameDay(new Date(t.scheduledTime), selectedDate));
         const isExcluded = dayEvents.some(e => e.eventType === 'スケジュール除外');
+        const isForceIncluded = dayEvents.some(e => e.eventType === 'スケジュール対象');
         const isDayHoliday = isHoliday(selectedDate, events);
+
+        // 通常状態での休日判定（カスタム設定を除外）
+        const normalDayEvents = dayEvents.filter(
+            e => e.eventType !== 'スケジュール除外' && e.eventType !== 'スケジュール対象'
+        );
+        const isNormallyHoliday = normalDayEvents.length === 0 ||
+            normalDayEvents.some(e => e.eventType === '休み');
 
         return {
             date: selectedDate,
-            events: dayEvents.filter(e => e.eventType !== 'スケジュール除外'),
+            events: dayEvents.filter(e => e.eventType !== 'スケジュール除外' && e.eventType !== 'スケジュール対象'),
             tasks: dayTasks,
             isExcluded,
-            isDayHoliday
+            isForceIncluded,
+            isDayHoliday,
+            isNormallyHoliday,
+            hasCustomSetting: isExcluded || isForceIncluded
         };
     }, [selectedDate, events, scheduledTasks]);
 
@@ -100,15 +111,22 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
         const dayTasks = scheduledTasks.filter(t => isSameDay(new Date(t.scheduledTime), day));
         const isDayHoliday = isHoliday(day, events);
 
-        const hasAnyEvent = dayEvents.length > 0;
         const isYasumi = dayEvents.some(e => e.eventType === '休み');
         const isExcluded = dayEvents.some(e => e.eventType === 'スケジュール除外');
+        const isForceIncluded = dayEvents.some(e => e.eventType === 'スケジュール対象');
+        const hasCustomSetting = isExcluded || isForceIncluded;
 
         let cellClass = 'day-cell';
         if (!isSameMonth(day, monthStart)) cellClass += ' other-month';
         if (isToday(day)) cellClass += ' today';
         if (isDayHoliday) cellClass += ' holiday';
         if (isExcluded) cellClass += ' excluded';
+        if (isForceIncluded) cellClass += ' force-included';
+
+        // 表示用のイベント（カスタム設定は除く）
+        const displayEvents = dayEvents.filter(
+            e => e.eventType !== 'スケジュール除外' && e.eventType !== 'スケジュール対象'
+        );
 
         return (
             <div
@@ -118,9 +136,10 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
             >
                 <div className="day-header">
                     <span className="day-number">{format(day, 'd')}</span>
+                    {isForceIncluded && <span className="badge-included" title="自動スケジュール対象（手動設定）">✓</span>}
                     {isExcluded && <span className="badge-excluded" title="自動スケジュール除外">🚫</span>}
-                    {isYasumi && !isExcluded && <span className="badge-yasumi">休</span>}
-                    {!isYasumi && !isExcluded && hasAnyEvent && dayEvents.filter(e => e.eventType !== 'スケジュール除外').map((e, i) => (
+                    {isYasumi && !hasCustomSetting && <span className="badge-yasumi">休</span>}
+                    {!isYasumi && !hasCustomSetting && displayEvents.length > 0 && displayEvents.map((e, i) => (
                         <span key={i} className={`badge-work ${e.eventType === '夜勤' ? 'yakin' : 'nikkin'}`}>
                             {e.eventType.charAt(0)}
                         </span>
@@ -308,11 +327,18 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
                                     <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>自動スケジュール</div>
                                     <div style={{ fontSize: '0.75rem', color: '#888' }}>
                                         {selectedDayDetails.isExcluded
-                                            ? '🚫 この日は除外されています'
-                                            : selectedDayDetails.isDayHoliday
-                                                ? '✅ この日は対象です'
-                                                : '⚠️ この日は勤務日のため対象外'}
+                                            ? '🚫 除外中（タップで解除）'
+                                            : selectedDayDetails.isForceIncluded
+                                                ? '✓ 対象（手動設定、タップで解除）'
+                                                : selectedDayDetails.isDayHoliday
+                                                    ? '✅ 対象（タップで除外）'
+                                                    : '⚠️ 対象外（勤務日、タップで対象に）'}
                                     </div>
+                                    {selectedDayDetails.hasCustomSetting && (
+                                        <div style={{ fontSize: '0.7rem', color: '#f57c00', marginTop: '0.2rem' }}>
+                                            ※ 手動設定中（タップで元に戻す）
+                                        </div>
+                                    )}
                                 </div>
                                 <label style={{
                                     display: 'flex',
@@ -322,7 +348,7 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
                                     <div style={{
                                         width: '50px',
                                         height: '26px',
-                                        backgroundColor: selectedDayDetails.isExcluded ? '#ccc' : '#4CAF50',
+                                        backgroundColor: selectedDayDetails.isDayHoliday ? '#4CAF50' : '#ccc',
                                         borderRadius: '13px',
                                         position: 'relative',
                                         transition: 'background-color 0.2s'
@@ -334,14 +360,14 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
                                             borderRadius: '50%',
                                             position: 'absolute',
                                             top: '2px',
-                                            left: selectedDayDetails.isExcluded ? '2px' : '26px',
+                                            left: selectedDayDetails.isDayHoliday ? '26px' : '2px',
                                             transition: 'left 0.2s',
                                             boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                                         }} />
                                     </div>
                                     <input
                                         type="checkbox"
-                                        checked={!selectedDayDetails.isExcluded}
+                                        checked={selectedDayDetails.isDayHoliday}
                                         onChange={handleToggleExclude}
                                         style={{ display: 'none' }}
                                     />

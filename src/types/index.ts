@@ -44,7 +44,7 @@ export interface ScheduledTask extends Task {
     recurrenceSourceId?: string; // 繰り返し元のタスクID
 }
 
-export type EventType = '夜勤' | '日勤' | '休み' | 'その他' | 'スケジュール除外';
+export type EventType = '夜勤' | '日勤' | '休み' | 'その他' | 'スケジュール除外' | 'スケジュール対象';
 
 export interface WorkEvent {
     title: string;

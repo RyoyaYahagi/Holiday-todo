@@ -64,7 +64,7 @@ export const Settings: React.FC<SettingsProps> = ({
                     console.log('ICSパース完了: イベント数 =', events.length);
 
                     // イベントタイプ別にカウント
-                    const typeCount: Record<string, number> = { '夜勤': 0, '日勤': 0, '休み': 0, 'その他': 0, 'スケジュール除外': 0 };
+                    const typeCount: Record<string, number> = { '夜勤': 0, '日勤': 0, '休み': 0, 'その他': 0, 'スケジュール除外': 0, 'スケジュール対象': 0 };
                     events.forEach(ev => {
                         typeCount[ev.eventType]++;
                     });

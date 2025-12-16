@@ -28,7 +28,7 @@ import { addDays, startOfDay, setHours, setMinutes } from 'date-fns';
  */
 const createMockEvent = (
     date: Date,
-    eventType: '夜勤' | '日勤' | '休み' | 'その他' | 'スケジュール除外',
+    eventType: '夜勤' | '日勤' | '休み' | 'その他' | 'スケジュール除外' | 'スケジュール対象',
     endDate?: Date
 ): WorkEvent => ({
     title: `${eventType}イベント`,
@@ -165,6 +165,27 @@ describe('isHoliday - 休日判定ロジック', () => {
         ];
 
         expect(isHoliday(date, events)).toBe(false);
+    });
+
+    it('「スケジュール対象」イベントがある日は休日（勤務日でも強制対象）', () => {
+        const date = new Date('2024-01-15');
+        const events: WorkEvent[] = [
+            createMockEvent(new Date('2024-01-15T09:00:00'), '日勤'),
+            createMockEvent(new Date('2024-01-15T00:00:00'), 'スケジュール対象'),
+        ];
+
+        expect(isHoliday(date, events)).toBe(true);
+    });
+
+    it('「スケジュール対象」は「スケジュール除外」より優先される', () => {
+        const date = new Date('2024-01-15');
+        const events: WorkEvent[] = [
+            createMockEvent(new Date('2024-01-15T00:00:00'), 'スケジュール対象'),
+            createMockEvent(new Date('2024-01-15T00:00:00'), 'スケジュール除外'),
+        ];
+
+        // スケジュール対象が最優先
+        expect(isHoliday(date, events)).toBe(true);
     });
 });
 
