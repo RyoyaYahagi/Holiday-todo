@@ -217,6 +217,7 @@ export function getPreviousWorkEndTime(date: Date, events: WorkEvent[]): Date | 
 /**
  * 特定の休日にタスクをスケジュールする
  * 既存のタスクがある場合、空いているスロットを探す
+ * 「休み」「その他」イベントの時間帯は避ける
  */
 export function scheduleTasksForHoliday(
     date: Date,
@@ -253,6 +254,31 @@ export function scheduleTasksForHoliday(
             .map(t => new Date(t.scheduledTime).getTime())
     );
 
+    // この日の「休み」「その他」イベントを取得（時間回避用）
+    const dayEvents = events.filter(e =>
+        isSameDay(e.start, date) &&
+        (e.eventType === '休み' || e.eventType === 'その他')
+    );
+
+    /**
+     * 指定時刻がイベントの時間帯と重複するか判定
+     */
+    const isTimeConflictWithEvents = (checkTime: Date): boolean => {
+        const checkStart = checkTime.getTime();
+        const checkEnd = checkStart + settings.scheduleInterval * 60 * 60 * 1000;
+
+        for (const event of dayEvents) {
+            const eventStart = event.start.getTime();
+            const eventEnd = event.end.getTime();
+
+            // 時間帯が重複する場合
+            if (checkStart < eventEnd && checkEnd > eventStart) {
+                return true;
+            }
+        }
+        return false;
+    };
+
     // スロット候補生成
     let currentStartTime = setHours(setMinutes(startOfDay(date), 0), startHour);
 
@@ -267,7 +293,8 @@ export function scheduleTasksForHoliday(
         while (attempts < maxAttempts) {
             const timeTime = currentStartTime.getTime();
 
-            if (!occupiedTimes.has(timeTime)) {
+            // 既存タスクとの重複チェック + イベント時間との重複チェック
+            if (!occupiedTimes.has(timeTime) && !isTimeConflictWithEvents(currentStartTime)) {
                 // 空いている
                 slotFound = true;
                 break;
