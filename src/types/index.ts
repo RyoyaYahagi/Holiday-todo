@@ -13,7 +13,7 @@ export type TaskScheduleType = 'priority' | 'time' | 'recurrence' | 'none';
 /**
  * 繰り返しタイプ
  */
-export type RecurrenceType = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'weekdays';
+export type RecurrenceType = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'yearly' | 'weekdays';
 
 /**
  * 繰り返しルール

@@ -39,6 +39,10 @@ export function getNextOccurrence(rule: RecurrenceRule, lastScheduledTime: numbe
                 nextDate = addWeeks(lastDate, interval);
             }
             break;
+        case 'biweekly':
+            // 隔週: 2週間後の同じ曜日
+            nextDate = addWeeks(lastDate, 2);
+            break;
         case 'monthly':
             nextDate = addMonths(lastDate, interval);
             // dayOfMonthが指定されている場合、その日に補正（必要なら）

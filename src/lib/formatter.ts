@@ -22,6 +22,13 @@ export function formatRecurrence(rule?: RecurrenceRule): string {
             const prefix = intervalText ? `${intervalText}週間ごと` : '毎週';
             return days ? `${prefix} ${days}曜日` : prefix;
         }
+        case 'biweekly': {
+            const dayMap = ['日', '月', '火', '水', '木', '金', '土'];
+            const days = daysOfWeek
+                ? daysOfWeek.map(d => dayMap[d]).join('・')
+                : '';
+            return days ? `隔週 ${days}曜日` : '隔週';
+        }
         case 'monthly':
             const date = dayOfMonth ? `${dayOfMonth}日` : '';
             return intervalText ? `${intervalText}ヶ月ごとの${date}` : `毎月 ${date}`;

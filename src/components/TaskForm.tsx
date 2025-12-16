@@ -212,6 +212,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                                     >
                                         <option value="daily">毎日</option>
                                         <option value="weekly">毎週</option>
+                                        <option value="biweekly">隔週</option>
                                         <option value="weekdays">毎平日（月〜金）</option>
                                         <option value="monthly">毎月</option>
                                         <option value="yearly">毎年</option>
