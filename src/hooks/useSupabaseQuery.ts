@@ -392,23 +392,31 @@ export function useSupabaseQuery() {
      */
     const saveEventsMutation = useMutation({
         mutationFn: async (newEvents: WorkEvent[]) => {
+            console.log('[saveEventsMutation] mutationFn開始:', newEvents.length, '件');
             await supabaseDb.saveEvents(newEvents);
+            console.log('[saveEventsMutation] mutationFn完了');
             return newEvents;
         },
         onMutate: async (newEvents) => {
+            console.log('[saveEventsMutation] onMutate: 楽観的更新開始');
             // 進行中のクエリをキャンセル（競合防止）
             await queryClient.cancelQueries({ queryKey: QUERY_KEYS.events });
             const previousEvents = queryClient.getQueryData<WorkEvent[]>(QUERY_KEYS.events);
+            console.log('[saveEventsMutation] 前のイベント数:', previousEvents?.length);
             // 楽観的更新
             queryClient.setQueryData<WorkEvent[]>(QUERY_KEYS.events, newEvents);
+            console.log('[saveEventsMutation] 楽観的更新完了:', newEvents.length, '件に設定');
             return { previousEvents };
         },
-        onError: (_err, _variables, context) => {
+        onError: (err, _variables, context) => {
+            console.error('[saveEventsMutation] onError:', err);
             if (context?.previousEvents) {
+                console.log('[saveEventsMutation] ロールバック:', context.previousEvents.length, '件に戻す');
                 queryClient.setQueryData(QUERY_KEYS.events, context.previousEvents);
             }
         },
         onSuccess: (newEvents) => {
+            console.log('[saveEventsMutation] onSuccess:', newEvents.length, '件で確定');
             // 成功後も明示的にキャッシュを設定（他の処理による上書き防止）
             queryClient.setQueryData<WorkEvent[]>(QUERY_KEYS.events, newEvents);
             // 自動スケジュールをバックグラウンドで実行

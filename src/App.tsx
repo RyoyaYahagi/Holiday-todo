@@ -142,9 +142,12 @@ function App() {
    */
   const handleToggleExclude = async (date: Date) => {
     const normalizedDate = startOfDay(date);
+    console.log('[handleToggleExclude] 開始:', normalizedDate.toISOString());
+    console.log('[handleToggleExclude] 現在のイベント数:', events.length);
 
     // この日のイベントを取得
     const dayEvents = events.filter(e => isSameDay(e.start, normalizedDate));
+    console.log('[handleToggleExclude] この日のイベント:', dayEvents.map(e => e.eventType));
 
     // 既存のカスタム設定を確認
     const existingExclude = dayEvents.find(e => e.eventType === 'スケジュール除外');
@@ -158,19 +161,23 @@ function App() {
       normalDayEvents.some(e => e.eventType === '休み');
 
     let newEvents: WorkEvent[];
+    let action: string;
 
     if (existingExclude) {
       // 除外設定を解除
+      action = '除外を解除';
       newEvents = events.filter(
         e => !(e.eventType === 'スケジュール除外' && isSameDay(e.start, normalizedDate))
       );
     } else if (existingInclude) {
       // 対象設定を解除
+      action = '対象を解除';
       newEvents = events.filter(
         e => !(e.eventType === 'スケジュール対象' && isSameDay(e.start, normalizedDate))
       );
     } else if (isNormallyHoliday) {
       // 通常は休日 → 除外に変更
+      action = '除外を追加';
       const newExcludeEvent: WorkEvent = {
         title: 'スケジュール除外',
         start: normalizedDate,
@@ -180,6 +187,7 @@ function App() {
       newEvents = [...events, newExcludeEvent];
     } else {
       // 通常は勤務日 → 対象に変更
+      action = '対象を追加';
       const newIncludeEvent: WorkEvent = {
         title: 'スケジュール対象',
         start: normalizedDate,
@@ -189,7 +197,11 @@ function App() {
       newEvents = [...events, newIncludeEvent];
     }
 
+    console.log('[handleToggleExclude] アクション:', action);
+    console.log('[handleToggleExclude] 新イベント数:', newEvents.length);
+
     await saveEvents(newEvents);
+    console.log('[handleToggleExclude] saveEvents呼び出し完了');
   };
 
   // 認証読み込み中

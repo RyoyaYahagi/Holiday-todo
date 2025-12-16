@@ -235,11 +235,18 @@ export const supabaseDb = {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('認証が必要です');
 
+        console.log('[supabaseDb.saveEvents] 開始:', events.length, '件');
+
         // 既存のイベントを削除
-        await supabase
+        const { error: deleteError } = await supabase
             .from('events')
             .delete()
             .eq('user_id', user.id);
+
+        if (deleteError) {
+            console.error('[supabaseDb.saveEvents] 削除エラー:', deleteError);
+            throw deleteError;
+        }
 
         // 新しいイベントを挿入
         if (events.length > 0) {
@@ -253,8 +260,13 @@ export const supabaseDb = {
                     event_type: event.eventType
                 })));
 
-            if (error) throw error;
+            if (error) {
+                console.error('[supabaseDb.saveEvents] 挿入エラー:', error);
+                throw error;
+            }
         }
+
+        console.log('[supabaseDb.saveEvents] 完了');
     },
 
     /**
