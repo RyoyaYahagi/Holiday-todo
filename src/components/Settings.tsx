@@ -429,7 +429,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
                 <div className="action-buttons" style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
                     <div style={{ display: 'flex', gap: '1rem' }}>
-                        <button onClick={handleReset} className="btn-secondary" style={{ backgroundColor: '#f5f5f5', padding: '0.5rem 1rem' }}>
+                        <button onClick={handleReset} className="btn-secondary" style={{ padding: '0.5rem 1rem' }}>
                             ↩️ 元に戻す
                         </button>
                         <button onClick={handleSave} className="btn-primary" style={{ padding: '0.5rem 1.5rem', width: 'auto' }}>
@@ -525,7 +525,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
                 <div className="action-buttons" style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
                     <div style={{ display: 'flex', gap: '1rem' }}>
-                        <button onClick={handleReset} className="btn-secondary" style={{ backgroundColor: '#f5f5f5' }}>
+                        <button onClick={handleReset} className="btn-secondary">
                             ↩️ 元に戻す
                         </button>
                         <button onClick={handleSave} className="btn-primary" style={{ padding: '0.8rem 2rem', fontSize: '1.1rem', width: 'auto' }}>

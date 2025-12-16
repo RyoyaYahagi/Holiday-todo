@@ -261,6 +261,15 @@ input[type="file"] {
   color: var(--text-primary);
 }
 
+select {
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  background: var(--input-bg, var(--card-bg));
+  color: var(--text-primary);
+}
+
 /* Task Form Priority */
 .priority-selector {
   display: flex;
