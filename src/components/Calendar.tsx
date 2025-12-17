@@ -156,22 +156,20 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, onTo
                     ))}
                 </div>
                 <div className="day-content">
-                    {dayTasks.slice(0, 2).map(task => (
+                    {dayTasks.slice(0, 1).map(task => (
                         <div
                             key={task.id}
                             className={`mini-task ${task.isCompleted ? 'completed' : ''}`}
                             style={{
                                 textDecoration: task.isCompleted ? 'line-through' : 'none',
-                                opacity: task.isCompleted ? 0.6 : 1,
-                                color: task.isCompleted ? '#888' : 'inherit'
+                                opacity: task.isCompleted ? 0.6 : 1
                             }}
                         >
-                            {task.isCompleted && '✓ '}
-                            {format(new Date(task.scheduledTime), 'HH:mm')} {task.title}
+                            {task.title.length > 4 ? task.title.slice(0, 4) + '…' : task.title}
                         </div>
                     ))}
-                    {dayTasks.length > 2 && (
-                        <div className="mini-task more">+{dayTasks.length - 2}件</div>
+                    {dayTasks.length > 1 && (
+                        <div className="mini-task more">+{dayTasks.length - 1}</div>
                     )}
                 </div>
             </div>
