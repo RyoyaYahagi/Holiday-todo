@@ -396,7 +396,7 @@ export const Settings: React.FC<SettingsProps> = ({
                             value={localSettings.notifyDayBeforeTime}
                             onChange={(e) => setLocalSettings({ ...localSettings, notifyDayBeforeTime: e.target.value })}
                             disabled={!localSettings.notifyOnDayBefore}
-                            style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #ccc', width: '90px' }}
+                            style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--input-bg, var(--card-bg))', color: 'var(--text-primary)', width: '90px' }}
                         />
                         <span>に通知</span>
                     </label>

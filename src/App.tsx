@@ -36,6 +36,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<'tasks' | 'calendar' | 'settings'>('tasks');
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null); // 編集中のタスク
+  const [calendarTaskDate, setCalendarTaskDate] = useState<Date | null>(null); // カレンダーからのタスク追加時の日付
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false); // ヘルプモード
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
@@ -133,6 +134,7 @@ function App() {
   const closeTaskModal = () => {
     setIsTaskModalOpen(false);
     setEditingTask(null);
+    setCalendarTaskDate(null);
   };
 
   /**
@@ -283,6 +285,29 @@ function App() {
                 setOriginalEvent(null); // 新規なのでoriginalEventはnull
                 setIsEventModalOpen(true);
               }}
+              onAddTask={(date) => {
+                // カレンダーからタスク追加
+                setCalendarTaskDate(date);
+                setEditingTask(null);
+                setIsTaskModalOpen(true);
+              }}
+              onEditTask={(task) => {
+                // カレンダーからタスク編集（元のTaskを取得）
+                const originalTask = tasks.find(t => t.id === task.taskId);
+                if (originalTask) {
+                  setEditingTask(originalTask);
+                  setCalendarTaskDate(new Date(task.scheduledTime));
+                  setIsTaskModalOpen(true);
+                }
+              }}
+              onDeleteTask={async (taskId) => {
+                // カレンダーからタスク削除（ScheduledTaskのID）
+                // scheduledTasksから元のtaskIdを取得
+                const scheduledTask = scheduledTasks.find(t => t.id === taskId);
+                if (scheduledTask) {
+                  await deleteTask(scheduledTask.taskId);
+                }
+              }}
             />
           </div>
         )}
@@ -316,11 +341,13 @@ function App() {
       <Modal
         isOpen={isTaskModalOpen}
         onClose={closeTaskModal}
-        title={editingTask ? "タスクを編集" : "新規タスク追加"}
+        title={editingTask ? "タスクを編集" : calendarTaskDate ? "タスクを追加" : "新規タスク追加"}
       >
         <TaskForm
           initialData={editingTask || undefined}
           buttonLabel={editingTask ? "保存" : "追加"}
+          calendarMode={calendarTaskDate !== null}
+          baseDate={calendarTaskDate || undefined}
           onSave={async (title, scheduleType, options) => {
             if (editingTask) {
               // 更新

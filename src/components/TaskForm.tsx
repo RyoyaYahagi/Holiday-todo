@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { Priority, TaskScheduleType, RecurrenceType, RecurrenceRule, Task } from '../types';
-import { format } from 'date-fns';
+import { format, getDay } from 'date-fns';
 
 interface TaskFormProps {
     onSave: (
@@ -16,9 +16,16 @@ interface TaskFormProps {
     initialData?: Task;
     maxPriority?: number;
     buttonLabel?: string;
+    /** カレンダーからの追加モード: trueの場合「指定」モードのみ表示 */
+    calendarMode?: boolean;
+    /** 基準となる日付（カレンダーからの追加時に使用） */
+    baseDate?: Date;
 }
 
 type ScheduleMode = 'auto' | 'manual' | 'none';
+
+/** 曜日ラベル（日〜土） */
+const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
 
 /**
  * タスク追加・編集フォーム
@@ -27,51 +34,82 @@ type ScheduleMode = 'auto' | 'manual' | 'none';
  * 1. 自動スケジュール（優先度）
  * 2. 手動スケジュール（日時指定 + 繰り返し）
  * 3. 指定なし（スケジュールしない）
+ * 
+ * calendarMode時は「指定」モードのみ使用可能
  */
 export const TaskForm: React.FC<TaskFormProps> = ({
     onSave,
     onCancel,
     initialData,
     maxPriority = 5,
-    buttonLabel = '追加'
+    buttonLabel = '追加',
+    calendarMode = false,
+    baseDate
 }) => {
-    const [title, setTitle] = useState('');
-    const [mode, setMode] = useState<ScheduleMode>('auto');
+    // 初期値を計算（initialDataまたはbaseDateから）
+    const getInitialDate = () => {
+        if (initialData?.manualScheduledTime) {
+            return format(new Date(initialData.manualScheduledTime), 'yyyy-MM-dd');
+        }
+        if (baseDate) {
+            return format(baseDate, 'yyyy-MM-dd');
+        }
+        return format(new Date(), 'yyyy-MM-dd');
+    };
+
+    const getInitialTime = () => {
+        if (initialData?.manualScheduledTime) {
+            return format(new Date(initialData.manualScheduledTime), 'HH:mm');
+        }
+        return '09:00';
+    };
+
+    const getInitialMode = (): ScheduleMode => {
+        if (calendarMode) return 'manual';
+        if (!initialData) return 'auto';
+        if (initialData.scheduleType === 'priority') return 'auto';
+        if (initialData.scheduleType === 'time' || initialData.scheduleType === 'recurrence') return 'manual';
+        return 'none';
+    };
+
+    const getInitialDays = () => {
+        if (initialData?.recurrence?.daysOfWeek) {
+            return initialData.recurrence.daysOfWeek;
+        }
+        if (baseDate) {
+            return [getDay(baseDate)];
+        }
+        return [];
+    };
+
+    const [title, setTitle] = useState(initialData?.title ?? '');
+    const [mode, setMode] = useState<ScheduleMode>(getInitialMode);
 
     // モードごとのState
-    const [priority, setPriority] = useState<Priority>(3);
+    const [priority, setPriority] = useState<Priority>(initialData?.priority ?? 3);
 
     // 手動用
-    const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-    const [selectedTime, setSelectedTime] = useState('09:00');
-    const [isRecurring, setIsRecurring] = useState(false);
-    const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>('weekly');
+    const [selectedDate, setSelectedDate] = useState(getInitialDate);
+    const [selectedTime, setSelectedTime] = useState(getInitialTime);
+    const [isRecurring, setIsRecurring] = useState(
+        initialData?.scheduleType === 'recurrence' && !!initialData?.recurrence
+    );
+    const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>(
+        initialData?.recurrence?.type ?? 'weekly'
+    );
+    // 週繰り返し用: 選択された曜日（0=日曜, 1=月曜, ...）
+    const [selectedDays, setSelectedDays] = useState<number[]>(getInitialDays);
 
-    // 初期化（編集モード）
-    useEffect(() => {
-        if (initialData) {
-            setTitle(initialData.title);
-            if (initialData.scheduleType === 'priority') {
-                setMode('auto');
-                if (initialData.priority) setPriority(initialData.priority);
-            } else if (initialData.scheduleType === 'time' || initialData.scheduleType === 'recurrence') {
-                setMode('manual');
-                if (initialData.manualScheduledTime) {
-                    const d = new Date(initialData.manualScheduledTime);
-                    setSelectedDate(format(d, 'yyyy-MM-dd'));
-                    setSelectedTime(format(d, 'HH:mm'));
-                }
-                if (initialData.scheduleType === 'recurrence' && initialData.recurrence) {
-                    setIsRecurring(true);
-                    setRecurrenceType(initialData.recurrence.type);
-                } else {
-                    setIsRecurring(false);
-                }
-            } else {
-                setMode('none');
-            }
-        }
-    }, [initialData]);
+    /**
+     * 曜日選択のトグル
+     */
+    const toggleDay = (day: number) => {
+        setSelectedDays(prev =>
+            prev.includes(day)
+                ? prev.filter(d => d !== day)
+                : [...prev, day].sort((a, b) => a - b)
+        );
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -81,9 +119,15 @@ export const TaskForm: React.FC<TaskFormProps> = ({
             // 手動スケジュール
             const dateTime = new Date(`${selectedDate}T${selectedTime}:00`);
             if (isRecurring) {
+                // 繰り返しルールを構築
+                const recurrence: RecurrenceRule = { type: recurrenceType };
+                // weekly または biweekly の場合、選択した曜日を含める
+                if ((recurrenceType === 'weekly' || recurrenceType === 'biweekly') && selectedDays.length > 0) {
+                    recurrence.daysOfWeek = selectedDays;
+                }
                 onSave(title, 'recurrence', {
                     manualScheduledTime: dateTime.getTime(),
-                    recurrence: { type: recurrenceType }
+                    recurrence
                 });
             } else {
                 onSave(title, 'time', {
@@ -102,11 +146,15 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         if (!initialData) {
             setTitle('');
             setPriority(3);
-            setMode('auto');
+            setMode(calendarMode ? 'manual' : 'auto');
             setIsRecurring(false);
+            setSelectedDays([]);
             // 日時はリセットしない（連続入力のため）
         }
     };
+
+    /** 週繰り返し（weekly/biweekly）時に曜日選択を表示するかどうか */
+    const showDaysOfWeek = isRecurring && (recurrenceType === 'weekly' || recurrenceType === 'biweekly');
 
     return (
         <form onSubmit={handleSubmit} className="task-form">
@@ -124,30 +172,39 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                 />
             </div>
 
-            {/* モード選択タブ */}
-            <div className="schedule-type-tabs three-tabs">
-                <button
-                    type="button"
-                    className={`tab-button ${mode === 'auto' ? 'active' : ''}`}
-                    onClick={() => setMode('auto')}
-                >
-                    ⭐ 自動
-                </button>
-                <button
-                    type="button"
-                    className={`tab-button ${mode === 'manual' ? 'active' : ''}`}
-                    onClick={() => setMode('manual')}
-                >
-                    🕐 指定
-                </button>
-                <button
-                    type="button"
-                    className={`tab-button ${mode === 'none' ? 'active' : ''}`}
-                    onClick={() => setMode('none')}
-                >
-                    📝 なし
-                </button>
-            </div>
+            {/* モード選択タブ（calendarModeでない場合のみ表示） */}
+            {!calendarMode && (
+                <div className="schedule-type-tabs three-tabs">
+                    <button
+                        type="button"
+                        className={`tab-button ${mode === 'auto' ? 'active' : ''}`}
+                        onClick={() => setMode('auto')}
+                    >
+                        ⭐ 自動
+                    </button>
+                    <button
+                        type="button"
+                        className={`tab-button ${mode === 'manual' ? 'active' : ''}`}
+                        onClick={() => setMode('manual')}
+                    >
+                        🕐 指定
+                    </button>
+                    <button
+                        type="button"
+                        className={`tab-button ${mode === 'none' ? 'active' : ''}`}
+                        onClick={() => setMode('none')}
+                    >
+                        📝 なし
+                    </button>
+                </div>
+            )}
+
+            {/* calendarMode時のヒント表示 */}
+            {calendarMode && (
+                <div className="calendar-mode-hint">
+                    <p className="hint-text">📅 選択した日付を基準にタスクを追加します</p>
+                </div>
+            )}
 
             {/* タブコンテンツ */}
             <div className="tab-content">
@@ -183,6 +240,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                                     value={selectedDate}
                                     onChange={(e) => setSelectedDate(e.target.value)}
                                     className="date-input"
+                                    readOnly={calendarMode}
                                 />
                                 <input
                                     type="time"
@@ -217,6 +275,25 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                                         <option value="monthly">毎月</option>
                                         <option value="yearly">毎年</option>
                                     </select>
+
+                                    {/* 曜日選択（毎週/隔週時のみ表示） */}
+                                    {showDaysOfWeek && (
+                                        <div className="days-of-week-selector">
+                                            {DAY_LABELS.map((label, index) => (
+                                                <label
+                                                    key={index}
+                                                    className={`day-checkbox-label ${selectedDays.includes(index) ? 'selected' : ''}`}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedDays.includes(index)}
+                                                        onChange={() => toggleDay(index)}
+                                                    />
+                                                    {label}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -244,3 +321,4 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         </form>
     );
 };
+

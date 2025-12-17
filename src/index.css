@@ -424,9 +424,10 @@ select {
 }
 
 .calendar-day-wrapper {
-  /* aspect-ratio削除 - 縦は内容に応じて */
-  min-height: 60px;
+  /* 固定高さで縦方向のサイズを制御 */
+  height: 70px;
   padding: 2px;
+  overflow: hidden;
 }
 
 .day-cell {
@@ -440,6 +441,7 @@ select {
   flex-direction: column;
   align-items: center;
   background: transparent;
+  overflow: hidden;
 }
 
 .day-cell.today .day-number {
@@ -526,10 +528,11 @@ select {
   overflow: hidden;
   width: 100%;
   margin-top: 2px;
+  max-height: 26px;
 }
 
 .mini-task {
-  font-size: 0.55rem;
+  font-size: 0.5rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -538,7 +541,8 @@ select {
   border-radius: 2px;
   margin-bottom: 1px;
   padding: 1px 2px;
-  text-align: center;
+  text-align: left;
+  max-width: 100%;
 }
 
 /* ダークモード時のmini-task */
@@ -628,7 +632,7 @@ select {
 /* Help Section */
 .btn-help {
   background: none;
-  border: 1px dashed #ccc;
+  border: 1px dashed var(--border-color);
   color: var(--primary-color);
   padding: 0.5rem 1rem;
   border-radius: var(--radius-md);
@@ -640,22 +644,24 @@ select {
 }
 
 .btn-help:hover {
-  background: #f9f9f9;
+  background: var(--bg-secondary);
+  border-color: var(--primary-color);
 }
 
 .help-box {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 1rem;
   margin-bottom: 1rem;
   font-size: 0.85rem;
+  color: var(--text-primary);
 }
 
 .help-box h4 {
   margin: 0 0 0.5rem 0;
   font-size: 0.9rem;
-  color: var(--primary-dark);
+  color: var(--primary-color);
 }
 
 .help-box ol,
@@ -667,10 +673,12 @@ select {
 .help-box li {
   margin-bottom: 0.3rem;
   line-height: 1.5;
+  color: var(--text-secondary);
 }
 
 .help-box p {
   margin: 0.5rem 0;
+  color: var(--text-secondary);
 }
 
 .help-box .note {
@@ -1120,7 +1128,8 @@ select {
 }
 
 .recurrence-toggle {
-  display: flex;
+  display: inline-flex;
+  flex-direction: row;
   align-items: center;
   gap: 0.5rem;
   cursor: pointer;
@@ -1130,10 +1139,101 @@ select {
 .recurrence-toggle input[type="checkbox"] {
   width: 18px;
   height: 18px;
-  accent-color: var(--primary-color);
+  accent-color: #6b7280;
+  margin: 0;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.recurrence-toggle span {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
 }
 
 .recurrence-options {
   margin-top: 0.75rem;
   padding-left: 1.5rem;
+}
+
+/* 曜日選択（毎週/隔週繰り返し用） */
+.days-of-week-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.day-checkbox-label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  background: var(--card-bg);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  color: var(--text-primary);
+  line-height: 38px;
+  text-align: center;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.day-checkbox-label:hover {
+  border-color: var(--primary-color);
+}
+
+.day-checkbox-label.selected {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.day-checkbox-label input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+/* 日曜日の色 */
+.day-checkbox-label:nth-child(1) {
+  color: #e74c3c;
+}
+
+.day-checkbox-label:nth-child(1).selected {
+  background: #e74c3c;
+  border-color: #e74c3c;
+  color: white;
+}
+
+/* 土曜日の色 */
+.day-checkbox-label:nth-child(7) {
+  color: #3498db;
+}
+
+.day-checkbox-label:nth-child(7).selected {
+  background: #3498db;
+  border-color: #3498db;
+  color: white;
+}
+
+/* カレンダーモード時のヒント */
+.calendar-mode-hint {
+  padding: 0.75rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.calendar-mode-hint .hint-text {
+  margin: 0;
 }
