@@ -211,11 +211,13 @@ export const Tutorial: React.FC<TutorialProps> = ({ isOpen, onClose, showHelpOnl
                     <li><strong>優先度 (P1〜P5)</strong>: 高いほど優先的にスケジュール</li>
                     <li><strong>スケジュールタイプ</strong>:
                         <ul style={{ marginTop: '0.25rem' }}>
-                            <li>🔄 自動: 空いている休日に自動配置</li>
+                            <li>⭐ 自動: 空いている休日に自動配置</li>
                             <li>🕐 時間指定: 特定の日時に固定</li>
-                            <li>🔁 繰り返し: 定期的に繰り返す</li>
+                            <li>🔁 繰り返し: 毎日/毎週/毎月など定期的に繰り返す</li>
                         </ul>
                     </li>
+                    <li><strong>週繰り返しの曜日選択</strong>: 「毎週」「隔週」で複数曜日を選択可能</li>
+                    <li><strong>繰り返しタスクの削除</strong>: その回のみ削除、今後の予定は残る</li>
                     <li><strong>完了済みタスク</strong>: 折りたたみ表示、一括削除可能</li>
                 </ul>
             </section>
@@ -225,20 +227,19 @@ export const Tutorial: React.FC<TutorialProps> = ({ isOpen, onClose, showHelpOnl
                 <ul style={{ paddingLeft: '1.25rem', fontSize: '0.9rem', lineHeight: 1.8 }}>
                     <li><strong>予定の種類</strong>: 夜勤🟣・日勤🔵・休み🟢・その他⚪</li>
                     <li><strong>休日判定</strong>: イベントなし or「休み」タイプの日</li>
+                    <li><strong>日付タップ</strong>: 詳細表示、タスク追加・編集・削除が可能</li>
                     <li><strong>Googleカレンダー連携</strong>: 設定からワンタップで同期</li>
                     <li><strong>ICS読み込み</strong>: カレンダーアプリからエクスポートしたファイル</li>
-                    <li><strong>予定の編集</strong>: 日付タップ → 予定タップで編集/削除</li>
                 </ul>
             </section>
 
             <section style={{ marginBottom: '1.5rem' }}>
                 <h4 style={{ color: 'var(--primary-color)', marginBottom: '0.5rem' }}>⏰ スケジュール設定</h4>
                 <ul style={{ paddingLeft: '1.25rem', fontSize: '0.9rem', lineHeight: 1.8 }}>
-                    <li><strong>午前の開始時間</strong>: 休日のタスク開始時刻</li>
-                    <li><strong>午後の開始時間</strong>: 夜勤明けなど午後スタート時</li>
+                    <li><strong>日勤後のタスク開始時間</strong>: 日勤や休みの日にタスクを開始する時刻</li>
+                    <li><strong>夜勤明けのタスク開始時間</strong>: 夜勤明けの日にタスクを開始する時刻</li>
                     <li><strong>タスク間隔</strong>: タスク間の時間（30分〜6時間）</li>
                     <li><strong>1日の最大タスク数</strong>: 1日にスケジュールする上限</li>
-                    <li><strong>「休み」「その他」イベント</strong>: その時間帯は自動スケジュールから除外</li>
                 </ul>
             </section>
 
@@ -248,6 +249,13 @@ export const Tutorial: React.FC<TutorialProps> = ({ isOpen, onClose, showHelpOnl
                     <li><strong>前日通知</strong>: 指定時刻に翌日のスケジュールを送信</li>
                     <li><strong>タスク開始通知</strong>: タスク開始0〜60分前に通知</li>
                     <li><strong>Webhook URL</strong>: Discordサーバーで作成したURLを設定</li>
+                </ul>
+            </section>
+
+            <section style={{ marginBottom: '1.5rem' }}>
+                <h4 style={{ color: 'var(--primary-color)', marginBottom: '0.5rem' }}>🎨 テーマ設定</h4>
+                <ul style={{ paddingLeft: '1.25rem', fontSize: '0.9rem', lineHeight: 1.8 }}>
+                    <li><strong>ライト/ダーク/システム</strong>: お好みの表示モードを選択</li>
                 </ul>
             </section>
 
