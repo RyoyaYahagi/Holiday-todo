@@ -467,26 +467,32 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
 
                 <div className="form-group" style={{ marginTop: '1rem' }}>
-                    <label>午前の開始時間（日勤/休み）</label>
+                    <label>日勤後のタスク開始時間</label>
+                    <p className="description" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                        日勤や休みの日に、タスクを開始する時間
+                    </p>
                     <select
                         value={localSettings.startTimeMorning}
                         onChange={(e) => setLocalSettings({ ...localSettings, startTimeMorning: parseInt(e.target.value) })}
-                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginLeft: '10px' }}
+                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--input-bg, var(--card-bg))', color: 'var(--text-primary)', marginTop: '0.3rem' }}
                     >
-                        {Array.from({ length: 12 }, (_, i) => i).map(h => (
+                        {Array.from({ length: 24 }, (_, i) => i).map(h => (
                             <option key={h} value={h}>{h}:00</option>
                         ))}
                     </select>
                 </div>
 
                 <div className="form-group" style={{ marginTop: '1rem' }}>
-                    <label>午後の開始時間（夜勤明けなど）</label>
+                    <label>夜勤明けのタスク開始時間</label>
+                    <p className="description" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                        夜勤明けの日に、タスクを開始する時間
+                    </p>
                     <select
                         value={localSettings.startTimeAfternoon}
                         onChange={(e) => setLocalSettings({ ...localSettings, startTimeAfternoon: parseInt(e.target.value) })}
-                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginLeft: '10px' }}
+                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--input-bg, var(--card-bg))', color: 'var(--text-primary)', marginTop: '0.3rem' }}
                     >
-                        {Array.from({ length: 12 }, (_, i) => i + 12).map(h => (
+                        {Array.from({ length: 24 }, (_, i) => i).map(h => (
                             <option key={h} value={h}>{h}:00</option>
                         ))}
                     </select>
