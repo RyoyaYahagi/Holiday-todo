@@ -644,18 +644,19 @@ select {
 }
 
 .help-box {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 1rem;
   margin-bottom: 1rem;
   font-size: 0.85rem;
+  color: var(--text-primary);
 }
 
 .help-box h4 {
   margin: 0 0 0.5rem 0;
   font-size: 0.9rem;
-  color: var(--primary-dark);
+  color: var(--primary-color);
 }
 
 .help-box ol,
@@ -667,10 +668,12 @@ select {
 .help-box li {
   margin-bottom: 0.3rem;
   line-height: 1.5;
+  color: var(--text-secondary);
 }
 
 .help-box p {
   margin: 0.5rem 0;
+  color: var(--text-secondary);
 }
 
 .help-box .note {
