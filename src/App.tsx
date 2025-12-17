@@ -26,6 +26,7 @@ function App() {
     addTask,
     updateTask,
     deleteTask,
+    deleteScheduledTask,
     updateSettings,
     saveEvents,
     saveScheduledTasks,
@@ -302,10 +303,15 @@ function App() {
               }}
               onDeleteTask={async (taskId) => {
                 // カレンダーからタスク削除（ScheduledTaskのID）
-                // scheduledTasksから元のtaskIdを取得
                 const scheduledTask = scheduledTasks.find(t => t.id === taskId);
                 if (scheduledTask) {
-                  await deleteTask(scheduledTask.taskId);
+                  if (scheduledTask.scheduleType === 'recurrence') {
+                    // 繰り返しタスク: この回のみ削除（元のTaskは保持）
+                    await deleteScheduledTask(scheduledTask.id);
+                  } else {
+                    // 非繰り返しタスク: 元のTaskも削除
+                    await deleteTask(scheduledTask.taskId);
+                  }
                 }
               }}
             />
