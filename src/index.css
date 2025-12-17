@@ -1160,6 +1160,10 @@ select {
   font-weight: 500;
   transition: all 0.2s;
   color: var(--text-primary);
+  /* 文字を確実に中央に配置 */
+  line-height: 1;
+  text-align: center;
+  padding: 0;
 }
 
 .day-checkbox-label:hover {
