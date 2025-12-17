@@ -8,7 +8,7 @@ import { formatRecurrence } from '../lib/formatter';
 interface TaskListProps {
     tasks: Task[];
     scheduledTasks: ScheduledTask[];
-    onDelete: (id: string) => void;
+    onDelete: (id: string, isRecurringInstance?: boolean) => void;
     onComplete: (id: string, isScheduled: boolean) => void;
     onUpdatePriority: (id: string, priority: Priority) => void;
     onEdit?: (id: string) => void;
@@ -145,7 +145,12 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDel
                     className="btn-delete"
                     onClick={(e) => {
                         e.stopPropagation();
-                        onDelete(realTaskId);
+                        // 繰り返しタスクのスケジュール済みインスタンスの場合は、そのインスタンスのみ削除
+                        if (isScheduled && item.scheduleType === 'recurrence') {
+                            onDelete(item.id, true); // ScheduledTask IDを渡す
+                        } else {
+                            onDelete(realTaskId, false); // 元のTask IDを渡す
+                        }
                     }}
                     aria-label="削除"
                     style={{ marginLeft: 'auto', fontSize: '1.2rem', color: '#ccc' }}

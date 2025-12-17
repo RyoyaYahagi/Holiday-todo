@@ -372,6 +372,10 @@ select {
   box-shadow: var(--shawdow-sm);
   width: 100%;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 180px);
+  /* ヘッダーとナビを除いた高さ */
 }
 
 .calendar-header {
@@ -380,6 +384,7 @@ select {
   align-items: center;
   margin-bottom: 0.5rem;
   padding: 0 0.25rem;
+  flex-shrink: 0;
 }
 
 .calendar-header h2 {
@@ -402,8 +407,14 @@ select {
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: auto repeat(6, 1fr);
+  /* 曜日ヘッダー + 6週分を均等に */
   gap: 0;
   width: 100%;
+  flex: 1;
+  /* 残りのスペースを埋める */
+  min-height: 0;
+  /* flexの子要素のオーバーフロー対策 */
 }
 
 .weekday-header {
@@ -424,8 +435,8 @@ select {
 }
 
 .calendar-day-wrapper {
-  /* 固定高さで縦方向のサイズを制御 */
-  height: 70px;
+  /* 高さは親グリッドで制御、最小高さを設定 */
+  min-height: 60px;
   padding: 2px;
   overflow: hidden;
 }
