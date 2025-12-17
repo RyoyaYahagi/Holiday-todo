@@ -1147,6 +1147,7 @@ select {
 }
 
 .day-checkbox-label {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1160,10 +1161,10 @@ select {
   font-weight: 500;
   transition: all 0.2s;
   color: var(--text-primary);
-  /* 文字を確実に中央に配置 */
-  line-height: 1;
+  line-height: 38px;
   text-align: center;
   padding: 0;
+  box-sizing: border-box;
 }
 
 .day-checkbox-label:hover {
@@ -1177,7 +1178,11 @@ select {
 }
 
 .day-checkbox-label input {
-  display: none;
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
 }
 
 /* 日曜日の色 */
