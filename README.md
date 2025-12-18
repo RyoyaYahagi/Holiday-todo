@@ -17,6 +17,9 @@
     - 「夜勤」「日勤」「休み」を自動判定。
 - **カレンダーからのタスク管理**:
     - 日付タップで詳細表示、その場でタスクの追加・編集・削除が可能。
+- **ゲストログイン**:
+    - アカウント登録なしでアプリを試用可能。
+    - ブラウザセッション終了までデータを保持。
 - **クラウド同期 (Supabase)**:
     - Googleアカウントでログインし、PC・スマホ間でデータを同期。
 - **Discord通知**:
@@ -52,24 +55,30 @@ VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-### 3. 開発サーバー起動
+### 3. Supabase設定
+- **匿名認証の有効化**: Authentication → Providers → Anonymous Sign-ins → Enable
+- **Google OAuth設定**: Authentication → Providers → Google → Enable
+
+### 4. 開発サーバー起動
 ```bash
 npm run dev
 ```
 
-### 4. ビルド
+### 5. ビルド
 ```bash
 npm run build
 ```
 
-### 5. テスト
+### 6. テスト
 ```bash
 npm test
 ```
 
 ## 📱 使い方
 
-1. **ログイン**: Googleアカウントでサインインします。
+1. **ログイン**: 
+   - Googleアカウントでサインイン、または
+   - 「ゲストとして試す」でアカウント登録なしに利用
 2. **初期設定 (チュートリアル)**:
    - アプリの基本操作ガイドが表示されます。
 3. **カレンダー読込**:
@@ -96,7 +105,7 @@ npm test
 ## 🛡️ セキュリティ
 
 - **RLS (Row Level Security)**: Supabase側で、ログインユーザー自身のデータにのみアクセスできるよう制限されています。
-- **認証**: Supabase Auth (Google OAuth) を使用。
+- **認証**: Supabase Auth (Google OAuth / Anonymous) を使用。
 
 ---
 
