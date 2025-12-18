@@ -57,7 +57,7 @@ export function getNextOccurrence(rule: RecurrenceRule, lastScheduledTime: numbe
         case 'yearly':
             nextDate = addYears(lastDate, interval);
             break;
-        case 'weekdays':
+        case 'weekdays': {
             // 平日のみ (月〜金)
             // interval日数分の平日を進めるのが定義だが、ここでは単純に「次の平日」をinterval回探すと解釈
             // または単にinterval関係なく「次の平日」か？ 通常このタイプはinterval=1で毎日平日。
@@ -70,6 +70,7 @@ export function getNextOccurrence(rule: RecurrenceRule, lastScheduledTime: numbe
                 remaining--;
             }
             break;
+        }
     }
 
     // 時間を維持する
@@ -475,12 +476,6 @@ export function reschedulePendingTasks(
  * @deprecated この関数は廃止予定です。代わりに reschedulePendingTasks を使用してください。
  * 互換性のためにのみ残されています。
  */
-export const scheduleTasksAcrossHolidays = (
-    _tasks: Task[],
-    _events: WorkEvent[],
-    _scheduledTasks: ScheduledTask[],
-    _today: Date
-    // Note: This needs refactoring if it's ever used again, to accept settings.
-): ScheduledTask[] => {
+export const scheduleTasksAcrossHolidays = (): ScheduledTask[] => {
     return [];
 };

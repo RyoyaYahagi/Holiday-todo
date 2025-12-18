@@ -195,13 +195,23 @@ export const Settings: React.FC<SettingsProps> = ({
     };
 
     const handleWebhookTest = async () => {
-        if (!localSettings.discordWebhookUrl) {
+        const url = localSettings.discordWebhookUrl;
+
+        if (!url) {
             setWebhookTestStatus('❌ Webhook URLを入力してください');
             return;
         }
+
+        // Discord Webhook URL形式のバリデーション
+        const discordWebhookPattern = /^https:\/\/discord\.com\/api\/webhooks\/\d+\/[\w-]+$/;
+        if (!discordWebhookPattern.test(url)) {
+            setWebhookTestStatus('❌ 正しいDiscord Webhook URL形式ではありません');
+            return;
+        }
+
         setWebhookTestStatus('送信中...');
         const result = await sendDiscordNotification(
-            localSettings.discordWebhookUrl,
+            url,
             [{ id: 'test', taskId: 'test', title: 'テストタスク', priority: 5, createdAt: 0, scheduledTime: Date.now(), isCompleted: false, scheduleType: 'priority' }],
             '【テスト通知】これはテスト通知です。'
         );

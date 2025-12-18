@@ -141,7 +141,7 @@ export const Tutorial: React.FC<TutorialProps> = ({ isOpen, onClose, showHelpOnl
                             <SampleCalendarDay day={19} type="日勤" />
                         </div>
                         <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
-                            🟢 休み　🔵 日勤　🟣 夜勤
+                            🟢 休み 🔵 日勤 🟣 夜勤
                         </div>
                     </div>
                     <p style={{ marginTop: '1rem', fontSize: '0.9rem' }}>

@@ -52,6 +52,10 @@ export default defineConfig({
       }
     }
   },
+  // 本番ビルドでconsole.log/debuggerを除去
+  esbuild: {
+    drop: ['console', 'debugger'],
+  },
   test: {
     environment: 'jsdom',
     globals: true,

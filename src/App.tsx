@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSupabaseQuery } from './hooks/useSupabaseQuery';
 import { useAuth } from './contexts/AuthContext';
 import { useNotifications } from './hooks/useNotifications';
@@ -38,18 +38,15 @@ function App() {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null); // 編集中のタスク
   const [calendarTaskDate, setCalendarTaskDate] = useState<Date | null>(null); // カレンダーからのタスク追加時の日付
-  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+  // チュートリアル表示判定をuseStateの初期値で行い、useEffect内でのsetState呼び出しを回避
+  const [isTutorialOpen, setIsTutorialOpen] = useState(() => {
+    const hasSeenTutorial = localStorage.getItem('tutorial_seen');
+    return !hasSeenTutorial;
+  });
   const [isHelpOpen, setIsHelpOpen] = useState(false); // ヘルプモード
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<WorkEvent | null>(null); // 編集中のイベント
   const [originalEvent, setOriginalEvent] = useState<WorkEvent | null>(null); // 編集前のオリジナルイベント
-
-  useEffect(() => {
-    const hasSeenTutorial = localStorage.getItem('tutorial_seen');
-    if (!hasSeenTutorial) {
-      setIsTutorialOpen(true);
-    }
-  }, []);
 
   const closeTutorial = () => {
     setIsTutorialOpen(false);
@@ -57,7 +54,7 @@ function App() {
   };
 
   // Activate notifications hook
-  useNotifications(settings, tasks, events, scheduledTasks, saveScheduledTasks);
+  useNotifications(settings, events, scheduledTasks);
 
   // Complete a scheduled task
   const completeTask = async (id: string, isScheduled: boolean) => {
