@@ -5,10 +5,10 @@ import './Login.css';
  * ログインページコンポーネント
  * 
  * 未認証ユーザーに表示されるログイン画面。
- * Googleアカウントによるソーシャルログインを提供する。
+ * Googleアカウントによるソーシャルログインまたはゲストログインを提供する。
  */
 export function Login() {
-    const { signInWithGoogle, loading } = useAuth();
+    const { signInWithGoogle, signInAsGuest, loading } = useAuth();
 
     if (loading) {
         return (
@@ -58,9 +58,21 @@ export function Login() {
                     Googleでログイン
                 </button>
 
+                <div className="login-divider">
+                    <span>または</span>
+                </div>
+
+                <button
+                    className="guest-login-btn"
+                    onClick={signInAsGuest}
+                    type="button"
+                >
+                    👤 ゲストとして試す
+                </button>
+
                 <p className="login-note">
-                    ログインすると、データがクラウドに保存され<br />
-                    複数のデバイスからアクセスできます
+                    Googleログインでデータをクラウドに保存<br />
+                    ゲストはブラウザを閉じるとデータが消えます
                 </p>
             </div>
         </div>
