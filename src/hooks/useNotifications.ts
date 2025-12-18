@@ -4,14 +4,20 @@ import { sendDiscordNotification } from '../lib/discordWebhook';
 import { isSameDay } from 'date-fns';
 import { isHoliday } from '../lib/scheduler';
 
+/**
+ * 通知機能を提供するカスタムフック
+ *
+ * @param settings - アプリケーション設定
+ * @param events - ワークイベント配列
+ * @param scheduledTasks - スケジュール済みタスク配列
+ */
 export function useNotifications(
     settings: AppSettings,
-    _tasks: any[], // Raw tasks (現在は使用しない - 既存スケジュールを使う)
     events: WorkEvent[],
-    scheduledTasks: ScheduledTask[],
-    _saveScheduledTasks: (t: ScheduledTask[]) => void
+    scheduledTasks: ScheduledTask[]
 ) {
-    const lastCheckRef = useRef<number>(Date.now());
+    // 初期値は0とし、useEffect内で初期化することで不純関数呼び出しを回避
+    const lastCheckRef = useRef<number>(0);
     // 重複通知防止: 最後に「前日通知」を送った日付
     const lastDayBeforeNotificationDateRef = useRef<string>('');
 

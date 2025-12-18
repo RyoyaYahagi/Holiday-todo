@@ -76,9 +76,12 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDel
         }
     };
 
-    const renderItem = (item: any, isScheduled: boolean) => {
-        const realTaskId = isScheduled ? item.taskId : item.id;
-        const isCompleted = isScheduled ? item.isCompleted : false;
+    const renderItem = (item: Task | ScheduledTask, isScheduled: boolean) => {
+        // isScheduled=trueの場合: ScheduledTask型
+        // isScheduled=falseの場合: Task型
+        const scheduledItem = isScheduled ? (item as ScheduledTask) : null;
+        const realTaskId = scheduledItem ? scheduledItem.taskId : item.id;
+        const isCompleted = scheduledItem ? scheduledItem.isCompleted : false;
 
         return (
             <li key={item.id} className="task-item-clean">
@@ -100,13 +103,13 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDel
                         {item.title}
                     </div>
                     <div className="task-meta-clean">
-                        {isScheduled && item.scheduleType !== 'none' ? (
+                        {scheduledItem && item.scheduleType !== 'none' ? (
                             isCompleted ? (
                                 <span className="date-text" style={{ color: 'var(--text-muted)' }}>
-                                    完了日: {format(new Date(item.scheduledTime), 'M月d日(eee)', { locale: ja })}
+                                    完了日: {format(new Date(scheduledItem.scheduledTime), 'M月d日(eee)', { locale: ja })}
                                 </span>
                             ) : (
-                                getTaskDateLabel(new Date(item.scheduledTime))
+                                getTaskDateLabel(new Date(scheduledItem.scheduledTime))
                             )
                         ) : (
                             <span className="date-text" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>未定</span>

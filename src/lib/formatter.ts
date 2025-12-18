@@ -29,9 +29,10 @@ export function formatRecurrence(rule?: RecurrenceRule): string {
                 : '';
             return days ? `隔週 ${days}曜日` : '隔週';
         }
-        case 'monthly':
+        case 'monthly': {
             const date = dayOfMonth ? `${dayOfMonth}日` : '';
             return intervalText ? `${intervalText}ヶ月ごとの${date}` : `毎月 ${date}`;
+        }
         case 'yearly':
             return intervalText ? `${intervalText}年ごと` : '毎年';
         default:
