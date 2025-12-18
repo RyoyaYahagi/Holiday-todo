@@ -1,0 +1,16 @@
+changelog:
+  categories:
+    - title: "🚀 新機能 (Features)"
+      labels:
+        - "enhancement"
+        - "feature"
+    - title: "🐛 バグ修正 (Bug Fixes)"
+      labels:
+        - "bug"
+    - title: "🛠 メンテナンス (Maintenance)"
+      labels:
+        - "chore"
+        - "documentation"
+  exclude:
+    labels:
+      - "ignore-for-release"
