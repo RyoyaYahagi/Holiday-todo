@@ -16,8 +16,12 @@ interface AuthContextType {
     loading: boolean;
     /** Googleのアクセストークン（Calendar API用） */
     providerToken: string | null;
+    /** ゲスト（匿名）ユーザーかどうか */
+    isGuest: boolean;
     /** Googleアカウントでサインイン */
     signInWithGoogle: () => Promise<void>;
+    /** ゲストとしてサインイン */
+    signInAsGuest: () => Promise<void>;
     /** サインアウト */
     signOut: () => Promise<void>;
 }
@@ -37,6 +41,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [session, setSession] = useState<Session | null>(null);
     const [providerToken, setProviderToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+
+    // ゲストユーザーかどうかを判定
+    const isGuest = user?.is_anonymous ?? false;
 
     useEffect(() => {
         // 初期セッション取得
@@ -81,6 +88,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     /**
+     * ゲストとしてサインイン（匿名認証）
+     * 
+     * アカウント登録なしでアプリを試用できる。
+     * ゲストデータはブラウザセッション終了まで保持される。
+     */
+    const signInAsGuest = async () => {
+        const { error } = await supabase.auth.signInAnonymously();
+        if (error) {
+            console.error('ゲストログインエラー:', error);
+            throw error;
+        }
+    };
+
+    /**
      * サインアウト
      * 
      * 現在のセッションを終了し、ユーザーをログアウト状態にする。
@@ -90,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, session, loading, providerToken, signInWithGoogle, signOut }}>
+        <AuthContext.Provider value={{ user, session, loading, providerToken, isGuest, signInWithGoogle, signInAsGuest, signOut }}>
             {children}
         </AuthContext.Provider>
     );
