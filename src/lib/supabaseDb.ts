@@ -636,7 +636,8 @@ export const supabaseDb = {
             .from('task_lists')
             .update({
                 name: list.name,
-                color: list.color
+                color: list.color,
+                created_at: new Date(list.createdAt).toISOString()
             })
             .eq('id', list.id);
 
