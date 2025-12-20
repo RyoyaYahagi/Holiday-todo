@@ -312,6 +312,7 @@ export function useSupabaseQuery() {
                     scheduleType: task.scheduleType,
                     manualScheduledTime: task.manualScheduledTime,
                     recurrence: task.recurrence,
+                    listId: task.listId,
                     // time/recurrence タイプでmanualScheduledTimeが変更された場合、scheduledTimeも更新
                     scheduledTime: (task.scheduleType === 'time' || task.scheduleType === 'recurrence') && task.manualScheduledTime
                         ? task.manualScheduledTime
@@ -334,7 +335,7 @@ export function useSupabaseQuery() {
                 old?.map(t => t.id === updatedTask.id ? updatedTask : t) ?? []
             );
 
-            // ScheduledTaskの楽観的更新（title, priority等を同期）
+            // ScheduledTaskの楽観的更新（title, priority, listId等を同期）
             queryClient.setQueryData<ScheduledTask[]>(QUERY_KEYS.scheduledTasks, (old) =>
                 old?.map(s => s.taskId === updatedTask.id ? {
                     ...s,
@@ -343,6 +344,7 @@ export function useSupabaseQuery() {
                     scheduleType: updatedTask.scheduleType,
                     manualScheduledTime: updatedTask.manualScheduledTime,
                     recurrence: updatedTask.recurrence,
+                    listId: updatedTask.listId,
                     scheduledTime: (updatedTask.scheduleType === 'time' || updatedTask.scheduleType === 'recurrence') && updatedTask.manualScheduledTime
                         ? updatedTask.manualScheduledTime
                         : s.scheduledTime
