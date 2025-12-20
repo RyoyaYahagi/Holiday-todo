@@ -113,6 +113,10 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         initialData?.listId || selectedListId || defaultList?.id
     );
 
+    // 選択中のリストがデフォルトかどうか（自動スケジュールはデフォルトリストのみ）
+    const selectedList = taskLists.find(l => l.id === listId);
+    const isDefaultList = selectedList?.isDefault ?? true;
+
     /**
      * 曜日選択のトグル
      */
@@ -194,7 +198,15 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                     <select
                         id="task-list"
                         value={listId || ''}
-                        onChange={(e) => setListId(e.target.value || undefined)}
+                        onChange={(e) => {
+                            const newListId = e.target.value || undefined;
+                            setListId(newListId);
+                            // デフォルト以外のリストに変更した場合、自動モードなら手動に切替
+                            const newList = taskLists.find(l => l.id === newListId);
+                            if (!newList?.isDefault && mode === 'auto') {
+                                setMode('manual');
+                            }
+                        }}
                         className="task-list-select"
                         style={{
                             width: '100%',
@@ -212,6 +224,11 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                             </option>
                         ))}
                     </select>
+                    {!isDefaultList && (
+                        <p className="hint-text" style={{ marginTop: '0.3rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                            ※ 自動スケジュールはデフォルトリストのみ対応
+                        </p>
+                    )}
                 </div>
             )}
 
@@ -221,7 +238,9 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                     <button
                         type="button"
                         className={`tab-button ${mode === 'auto' ? 'active' : ''}`}
-                        onClick={() => setMode('auto')}
+                        onClick={() => isDefaultList && setMode('auto')}
+                        disabled={!isDefaultList}
+                        style={{ opacity: isDefaultList ? 1 : 0.5, cursor: isDefaultList ? 'pointer' : 'not-allowed' }}
                     >
                         ⭐ 自動
                     </button>

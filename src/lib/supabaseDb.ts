@@ -343,7 +343,8 @@ export const supabaseDb = {
             schedule_type: task.scheduleType,
             manual_scheduled_time: task.manualScheduledTime ? new Date(task.manualScheduledTime).toISOString() : null,
             recurrence: task.recurrence || null,
-            recurrence_source_id: task.recurrenceSourceId || null
+            recurrence_source_id: task.recurrenceSourceId || null,
+            list_id: task.listId || null
         }));
 
         const { error } = await supabase
