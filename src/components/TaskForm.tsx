@@ -132,7 +132,10 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         e.preventDefault();
         if (!title.trim()) return;
 
-        if (mode === 'manual') {
+        // デフォルトリスト以外で自動モードの場合は手動モードとして処理
+        const effectiveMode = (!isDefaultList && mode === 'auto') ? 'manual' : mode;
+
+        if (effectiveMode === 'manual') {
             // 手動スケジュール
             const dateTime = new Date(`${selectedDate}T${selectedTime}:00`);
             if (isRecurring) {
@@ -153,8 +156,8 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                     listId
                 });
             }
-        } else if (mode === 'auto') {
-            // 自動スケジュール
+        } else if (effectiveMode === 'auto') {
+            // 自動スケジュール（デフォルトリストのみ）
             onSave(title, 'priority', { priority, listId });
         } else {
             // 指定なし
@@ -270,7 +273,8 @@ export const TaskForm: React.FC<TaskFormProps> = ({
 
             {/* タブコンテンツ */}
             <div className="tab-content">
-                {mode === 'auto' && (
+                {/* 自動モード（デフォルトリスト以外では手動として扱う） */}
+                {mode === 'auto' && isDefaultList && (
                     <div className="form-group">
                         <label>優先度 (自動スケジュール)</label>
                         <p className="hint-text">休日の空き時間に自動で割り当てられます</p>
@@ -291,7 +295,8 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                     </div>
                 )}
 
-                {mode === 'manual' && (
+                {/* 手動モード（または非デフォルトリストで自動が選ばれている場合） */}
+                {(mode === 'manual' || (mode === 'auto' && !isDefaultList)) && (
                     <>
                         <div className="form-group">
                             <label>日時を指定</label>

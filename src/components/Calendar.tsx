@@ -342,56 +342,62 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, task
                                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>タスクなし</p>
                             ) : (
                                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                                    {selectedDayDetails.tasks.map(task => (
-                                        <li
-                                            key={task.id}
-                                            style={{
-                                                padding: '0.5rem 0',
-                                                borderBottom: '1px solid var(--border-color)',
-                                                opacity: task.isCompleted ? 0.6 : 1,
-                                                cursor: onEditTask || onDeleteTask ? 'pointer' : 'default'
-                                            }}
-                                            onClick={() => onEditTask && onEditTask(task)}
-                                        >
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <span style={{
-                                                    backgroundColor: task.priority ? `hsl(${(5 - task.priority) * 30}, 70%, 50%)` : '#ccc',
-                                                    color: 'white',
-                                                    padding: '2px 6px',
-                                                    borderRadius: '4px',
-                                                    fontSize: '0.7rem'
-                                                }}>
-                                                    {task.priority ? `P${task.priority}` : '-'}
-                                                </span>
-                                                <span style={{ flex: 1, textDecoration: task.isCompleted ? 'line-through' : 'none' }}>{task.title}</span>
-                                                {onDeleteTask && (
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            if (window.confirm(`「${task.title}」を削除しますか？`)) {
-                                                                onDeleteTask(task.id);
-                                                            }
-                                                        }}
-                                                        style={{
-                                                            background: 'none',
-                                                            border: 'none',
-                                                            color: '#ff3b30',
-                                                            cursor: 'pointer',
-                                                            padding: '0.25rem',
-                                                            fontSize: '1rem'
-                                                        }}
-                                                    >
-                                                        🗑️
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
-                                                {format(new Date(task.scheduledTime), 'HH:mm')}
-                                                {task.isCompleted && ' ✓ 完了'}
-                                                {(onEditTask || onDeleteTask) && <span style={{ marginLeft: '0.5rem', color: 'var(--text-muted)' }}>タップで編集</span>}
-                                            </div>
-                                        </li>
-                                    ))}
+                                    {selectedDayDetails.tasks.map(task => {
+                                        const list = taskLists.find(l => l.id === task.listId);
+                                        const listColor = list?.color || '#6B7280';
+                                        return (
+                                            <li
+                                                key={task.id}
+                                                style={{
+                                                    padding: '0.5rem 0',
+                                                    paddingLeft: '0.5rem',
+                                                    borderBottom: '1px solid var(--border-color)',
+                                                    borderLeft: `4px solid ${listColor}`,
+                                                    opacity: task.isCompleted ? 0.6 : 1,
+                                                    cursor: onEditTask || onDeleteTask ? 'pointer' : 'default'
+                                                }}
+                                                onClick={() => onEditTask && onEditTask(task)}
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <span style={{
+                                                        backgroundColor: task.priority ? `hsl(${(5 - task.priority) * 30}, 70%, 50%)` : '#ccc',
+                                                        color: 'white',
+                                                        padding: '2px 6px',
+                                                        borderRadius: '4px',
+                                                        fontSize: '0.7rem'
+                                                    }}>
+                                                        {task.priority ? `P${task.priority}` : '-'}
+                                                    </span>
+                                                    <span style={{ flex: 1, textDecoration: task.isCompleted ? 'line-through' : 'none' }}>{task.title}</span>
+                                                    {onDeleteTask && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (window.confirm(`「${task.title}」を削除しますか？`)) {
+                                                                    onDeleteTask(task.id);
+                                                                }
+                                                            }}
+                                                            style={{
+                                                                background: 'none',
+                                                                border: 'none',
+                                                                color: '#ff3b30',
+                                                                cursor: 'pointer',
+                                                                padding: '0.25rem',
+                                                                fontSize: '1rem'
+                                                            }}
+                                                        >
+                                                            🗑️
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+                                                    {format(new Date(task.scheduledTime), 'HH:mm')}
+                                                    {task.isCompleted && ' ✓ 完了'}
+                                                    {(onEditTask || onDeleteTask) && <span style={{ marginLeft: '0.5rem', color: 'var(--text-muted)' }}>タップで編集</span>}
+                                                </div>
+                                            </li>
+                                        );
+                                    })}
                                 </ul>
                             )}
                             {/* タスク追加ボタン */}
