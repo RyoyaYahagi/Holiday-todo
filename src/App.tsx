@@ -58,18 +58,27 @@ function App() {
 
   // リストの並び替え処理
   const handleReorderList = async (listId: string, direction: 'up' | 'down') => {
+    console.log('[handleReorderList] 開始:', listId, direction);
     const currentIndex = taskLists.findIndex(l => l.id === listId);
+    console.log('[handleReorderList] currentIndex:', currentIndex);
     if (currentIndex === -1) return;
 
     const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    console.log('[handleReorderList] targetIndex:', targetIndex);
     if (targetIndex < 0 || targetIndex >= taskLists.length) return;
 
     // 並び替えてcreatedAtを入れ替える（sortOrderがないのでcreatedAtで代用）
     const currentList = taskLists[currentIndex];
     const targetList = taskLists[targetIndex];
+    console.log('[handleReorderList] 入れ替え:', currentList.name, '<->', targetList.name);
 
-    await updateTaskList({ ...currentList, createdAt: targetList.createdAt });
-    await updateTaskList({ ...targetList, createdAt: currentList.createdAt });
+    try {
+      await updateTaskList({ ...currentList, createdAt: targetList.createdAt });
+      await updateTaskList({ ...targetList, createdAt: currentList.createdAt });
+      console.log('[handleReorderList] 完了');
+    } catch (err) {
+      console.error('[handleReorderList] エラー:', err);
+    }
   };
 
   const closeTutorial = () => {
