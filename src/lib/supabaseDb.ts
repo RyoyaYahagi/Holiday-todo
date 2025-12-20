@@ -253,7 +253,11 @@ export const supabaseDb = {
     },
 
     /**
-     * イベントを保存（既存を置換）
+     * イベントを保存（マージ方式: 既存イベントを保持しつつ追加/更新）
+     * 
+     * 同じ日付・イベントタイプが既に存在する場合は更新し、
+     * 存在しない場合は新規追加する。
+     * スケジュール除外/対象のイベントは完全置換する。
      */
     async saveEvents(events: WorkEvent[]): Promise<void> {
         const { data: { user } } = await supabase.auth.getUser();
@@ -261,22 +265,56 @@ export const supabaseDb = {
 
         console.log('[supabaseDb.saveEvents] 開始:', events.length, '件');
 
-        // 既存のイベントを削除
-        const { error: deleteError } = await supabase
+        // 既存イベントを取得
+        const { data: existingData, error: fetchError } = await supabase
             .from('events')
-            .delete()
+            .select('id, title, start_time, end_time, event_type')
             .eq('user_id', user.id);
 
-        if (deleteError) {
-            console.error('[supabaseDb.saveEvents] 削除エラー:', deleteError);
-            throw deleteError;
+        if (fetchError) {
+            console.error('[supabaseDb.saveEvents] 取得エラー:', fetchError);
+            throw fetchError;
         }
 
+        const existingEvents = existingData || [];
+
+        // スケジュール除外/対象イベントは一旦削除（トグル操作のため）
+        const customEventTypes = ['スケジュール除外', 'スケジュール対象'];
+        const customEventIds = existingEvents
+            .filter(e => customEventTypes.includes(e.event_type))
+            .map(e => e.id);
+
+        if (customEventIds.length > 0) {
+            const { error: deleteError } = await supabase
+                .from('events')
+                .delete()
+                .in('id', customEventIds);
+
+            if (deleteError) {
+                console.error('[supabaseDb.saveEvents] カスタムイベント削除エラー:', deleteError);
+            }
+        }
+
+        // 新しいイベントをフィルタリング
+        // 既存イベント（カスタム以外）と同じ日付・タイプのものは更新対象から除外
+        const existingNonCustom = existingEvents.filter(e => !customEventTypes.includes(e.event_type));
+        const existingKeys = new Set(
+            existingNonCustom.map(e => `${e.start_time}_${e.event_type}`)
+        );
+
+        const newEvents = events.filter(event => {
+            const key = `${event.start.toISOString()}_${event.eventType}`;
+            // カスタムイベントは常に追加
+            if (customEventTypes.includes(event.eventType)) return true;
+            // 既存にない場合のみ追加
+            return !existingKeys.has(key);
+        });
+
         // 新しいイベントを挿入
-        if (events.length > 0) {
+        if (newEvents.length > 0) {
             const { error } = await supabase
                 .from('events')
-                .insert(events.map(event => ({
+                .insert(newEvents.map(event => ({
                     user_id: user.id,
                     title: event.title,
                     start_time: event.start.toISOString(),
@@ -290,7 +328,7 @@ export const supabaseDb = {
             }
         }
 
-        console.log('[supabaseDb.saveEvents] 完了');
+        console.log('[supabaseDb.saveEvents] 完了:', newEvents.length, '件追加');
     },
 
     /**
