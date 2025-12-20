@@ -548,7 +548,7 @@ export const supabaseDb = {
         const newList = {
             id: crypto.randomUUID(),
             user_id: user.id,
-            name: 'すべて',
+            name: 'プライベート',
             color: '#6B7280',
             is_default: true,
             created_at: new Date().toISOString()
