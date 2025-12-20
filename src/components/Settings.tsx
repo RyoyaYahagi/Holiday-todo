@@ -21,6 +21,7 @@ interface SettingsProps {
     onAddList?: (list: TaskListType) => void;
     onEditList?: (list: TaskListType) => void;
     onDeleteList?: (id: string) => void;
+    onReorderList?: (listId: string, direction: 'up' | 'down') => void;
 }
 
 export const Settings: React.FC<SettingsProps> = ({
@@ -35,7 +36,8 @@ export const Settings: React.FC<SettingsProps> = ({
     taskLists = [],
     onAddList,
     onEditList,
-    onDeleteList
+    onDeleteList,
+    onReorderList
 }) => {
     const { providerToken, signInWithGoogle } = useAuth();
     const [localSettings, setLocalSettings] = useState<AppSettings>(settings);
@@ -299,6 +301,41 @@ export const Settings: React.FC<SettingsProps> = ({
                                     {list.name}
                                     {list.isDefault && <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginLeft: '0.5rem' }}>(デフォルト)</span>}
                                 </span>
+                                {/* 並び替えボタン */}
+                                {onReorderList && (
+                                    <>
+                                        <button
+                                            onClick={() => onReorderList(list.id, 'up')}
+                                            disabled={taskLists.indexOf(list) === 0}
+                                            style={{
+                                                padding: '0.2rem 0.4rem',
+                                                fontSize: '0.8rem',
+                                                border: '1px solid var(--border-color)',
+                                                borderRadius: '4px',
+                                                background: 'var(--bg-secondary)',
+                                                cursor: taskLists.indexOf(list) === 0 ? 'not-allowed' : 'pointer',
+                                                opacity: taskLists.indexOf(list) === 0 ? 0.4 : 1
+                                            }}
+                                        >
+                                            ▲
+                                        </button>
+                                        <button
+                                            onClick={() => onReorderList(list.id, 'down')}
+                                            disabled={taskLists.indexOf(list) === taskLists.length - 1}
+                                            style={{
+                                                padding: '0.2rem 0.4rem',
+                                                fontSize: '0.8rem',
+                                                border: '1px solid var(--border-color)',
+                                                borderRadius: '4px',
+                                                background: 'var(--bg-secondary)',
+                                                cursor: taskLists.indexOf(list) === taskLists.length - 1 ? 'not-allowed' : 'pointer',
+                                                opacity: taskLists.indexOf(list) === taskLists.length - 1 ? 0.4 : 1
+                                            }}
+                                        >
+                                            ▼
+                                        </button>
+                                    </>
+                                )}
                                 <button
                                     onClick={() => onEditList?.(list)}
                                     className="btn-secondary"

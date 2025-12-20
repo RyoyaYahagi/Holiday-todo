@@ -56,6 +56,22 @@ function App() {
   const [isListModalOpen, setIsListModalOpen] = useState(false);
   const [editingList, setEditingList] = useState<TaskListType | null>(null);
 
+  // リストの並び替え処理
+  const handleReorderList = async (listId: string, direction: 'up' | 'down') => {
+    const currentIndex = taskLists.findIndex(l => l.id === listId);
+    if (currentIndex === -1) return;
+
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= taskLists.length) return;
+
+    // 並び替えてcreatedAtを入れ替える（sortOrderがないのでcreatedAtで代用）
+    const currentList = taskLists[currentIndex];
+    const targetList = taskLists[targetIndex];
+
+    await updateTaskList({ ...currentList, createdAt: targetList.createdAt });
+    await updateTaskList({ ...targetList, createdAt: currentList.createdAt });
+  };
+
   const closeTutorial = () => {
     setIsTutorialOpen(false);
     localStorage.setItem('tutorial_seen', 'true');
@@ -366,6 +382,7 @@ function App() {
                 setIsListModalOpen(true);
               }}
               onDeleteList={deleteTaskList}
+              onReorderList={handleReorderList}
             />
           </div>
         )}
