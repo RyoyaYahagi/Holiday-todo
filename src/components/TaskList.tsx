@@ -57,15 +57,13 @@ export const TaskList: React.FC<TaskListProps> = ({
         const defaultList = taskLists.find(l => l.isDefault);
         const isSelectingDefault = selectedListId === defaultList?.id;
 
-        return items.filter(item => {
-            if (isSelectingDefault) {
-                // デフォルトリスト選択時: listIdが未設定またはデフォルトIDのタスクのみ
-                return !item.listId || item.listId === defaultList?.id;
-            } else {
-                // 他のリスト選択時: そのリストIDを持つタスクのみ
-                return item.listId === selectedListId;
-            }
-        });
+        // デフォルトリスト（「すべて」）選択時は全タスクを表示
+        if (isSelectingDefault) {
+            return items;
+        }
+
+        // 他のリスト選択時: そのリストIDを持つタスクのみ
+        return items.filter(item => item.listId === selectedListId);
     };
 
     // フィルタリングされたタスク

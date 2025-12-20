@@ -38,6 +38,7 @@ export interface TaskList {
     color: string;       // 例: "#4CAF50"
     isDefault: boolean;  // デフォルトリストかどうか（削除不可）
     createdAt: number;
+    sortOrder?: number;  // 表示順（0から開始、未設定は末尾）
 }
 
 /**
