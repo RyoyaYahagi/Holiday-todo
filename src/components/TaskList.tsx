@@ -315,7 +315,7 @@ export const TaskList: React.FC<TaskListProps> = ({
                 </button>
             </div>
 
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem', paddingLeft: '0.5rem' }}>タスク一覧</h2>
+
 
             {/* 今日のタスク */}
             {dueTasks.length > 0 && (

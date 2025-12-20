@@ -22,6 +22,8 @@ interface CalendarProps {
     scheduledTasks: ScheduledTask[];
     /** タスクリスト一覧（色分け用） */
     taskLists?: TaskListType[];
+    /** 選択中のリストID（フィルタ用） */
+    selectedListId?: string | null;
     /** 日付の除外状態をトグルするコールバック（オプション） */
     onToggleExclude?: (date: Date) => void;
     /** イベントを編集するコールバック（オプション） */
@@ -42,7 +44,7 @@ interface CalendarProps {
  * イベントとスケジュール済みタスクを表示する。
  * 日付セルをタップすると、詳細モーダルが表示される。
  */
-export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, taskLists = [], onToggleExclude, onEditEvent, onAddEvent, onAddTask, onEditTask, onDeleteTask }) => {
+export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, taskLists = [], selectedListId, onToggleExclude, onEditEvent, onAddEvent, onAddTask, onEditTask, onDeleteTask }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     // 選択された日付のみを保持（詳細はevents/scheduledTasksから動的に取得）
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -57,6 +59,23 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, task
         end: endDate,
     });
 
+    // リストフィルタリング
+    const filteredScheduledTasks = useMemo(() => {
+        if (selectedListId === null || selectedListId === undefined) {
+            return scheduledTasks;
+        }
+        const defaultList = taskLists.find(l => l.isDefault);
+        const isSelectingDefault = selectedListId === defaultList?.id;
+
+        // デフォルトリスト（「すべて」）選択時は全タスクを表示
+        if (isSelectingDefault) {
+            return scheduledTasks;
+        }
+
+        // 他のリスト選択時: そのリストIDを持つタスクのみ
+        return scheduledTasks.filter(task => task.listId === selectedListId);
+    }, [scheduledTasks, selectedListId, taskLists]);
+
     const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
     const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
 
@@ -68,7 +87,7 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, task
         if (!selectedDate) return null;
 
         const dayEvents = events.filter(e => isSameDay(e.start, selectedDate));
-        const dayTasks = scheduledTasks.filter(t => isSameDay(new Date(t.scheduledTime), selectedDate));
+        const dayTasks = filteredScheduledTasks.filter(t => isSameDay(new Date(t.scheduledTime), selectedDate));
         const isExcluded = dayEvents.some(e => e.eventType === 'スケジュール除外');
         const isForceIncluded = dayEvents.some(e => e.eventType === 'スケジュール対象');
         const isDayHoliday = isHoliday(selectedDate, events);
@@ -120,7 +139,7 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, task
 
     const getDayContent = (day: Date) => {
         const dayEvents = events.filter(e => isSameDay(e.start, day));
-        const dayTasks = scheduledTasks.filter(t => isSameDay(new Date(t.scheduledTime), day));
+        const dayTasks = filteredScheduledTasks.filter(t => isSameDay(new Date(t.scheduledTime), day));
         const isDayHoliday = isHoliday(day, events);
 
         const isYasumi = dayEvents.some(e => e.eventType === '休み');
