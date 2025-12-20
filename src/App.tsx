@@ -10,7 +10,8 @@ import { Login } from './components/Login';
 
 import { Modal } from './components/Modal';
 import { Tutorial } from './components/Tutorial';
-import type { Task, WorkEvent, EventType } from './types';
+import { ListEditModal } from './components/ListEditModal';
+import type { Task, WorkEvent, EventType, TaskList as TaskListType } from './types';
 import { getNextOccurrence } from './lib/scheduler';
 import { isSameDay, startOfDay } from 'date-fns';
 
@@ -22,6 +23,7 @@ function App() {
     scheduledTasks,
     events,
     settings,
+    taskLists,
     loading,
     addTask,
     updateTask,
@@ -31,7 +33,10 @@ function App() {
     saveEvents,
     saveScheduledTasks,
     exportData,
-    importData
+    importData,
+    addTaskList,
+    updateTaskList,
+    deleteTaskList
   } = useSupabaseQuery();
 
   const [activeTab, setActiveTab] = useState<'tasks' | 'calendar' | 'settings'>('tasks');
@@ -47,6 +52,9 @@ function App() {
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<WorkEvent | null>(null); // 編集中のイベント
   const [originalEvent, setOriginalEvent] = useState<WorkEvent | null>(null); // 編集前のオリジナルイベント
+  const [selectedListId, setSelectedListId] = useState<string | null>(null); // 選択中のリスト(null=すべて)
+  const [isListModalOpen, setIsListModalOpen] = useState(false);
+  const [editingList, setEditingList] = useState<TaskListType | null>(null);
 
   const closeTutorial = () => {
     setIsTutorialOpen(false);
@@ -241,6 +249,17 @@ function App() {
             <TaskList
               tasks={tasks}
               scheduledTasks={scheduledTasks}
+              taskLists={taskLists}
+              selectedListId={selectedListId}
+              onSelectList={setSelectedListId}
+              onAddList={() => {
+                setEditingList(null);
+                setIsListModalOpen(true);
+              }}
+              onEditList={(list) => {
+                setEditingList(list);
+                setIsListModalOpen(true);
+              }}
               onDelete={async (id, isRecurringInstance) => {
                 if (isRecurringInstance) {
                   // 繰り返しタスクのインスタンス: ScheduledTaskのみ削除
@@ -576,6 +595,24 @@ function App() {
 
       {/* Help Modal */}
       <Tutorial isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} showHelpOnly />
+
+      {/* List Edit Modal */}
+      <ListEditModal
+        isOpen={isListModalOpen}
+        onClose={() => {
+          setIsListModalOpen(false);
+          setEditingList(null);
+        }}
+        list={editingList}
+        onSave={async (list) => {
+          if (editingList) {
+            await updateTaskList(list);
+          } else {
+            await addTaskList(list);
+          }
+        }}
+        onDelete={deleteTaskList}
+      />
 
       <nav className="bottom-nav">
         <button

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Task, ScheduledTask, Priority } from '../types';
+import type { Task, ScheduledTask, Priority, TaskList as TaskListType } from '../types';
 import { format, isBefore, isToday, isTomorrow, isYesterday, startOfDay } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
@@ -8,6 +8,11 @@ import { formatRecurrence } from '../lib/formatter';
 interface TaskListProps {
     tasks: Task[];
     scheduledTasks: ScheduledTask[];
+    taskLists: TaskListType[];
+    selectedListId: string | null; // null = すべて表示
+    onSelectList: (listId: string | null) => void;
+    onAddList: () => void;
+    onEditList?: (list: TaskListType) => void;
     onDelete: (id: string, isRecurringInstance?: boolean) => void;
     onComplete: (id: string, isScheduled: boolean) => void;
     onUpdatePriority: (id: string, priority: Priority) => void;
@@ -16,7 +21,21 @@ interface TaskListProps {
     maxPriority?: number;
 }
 
-export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDelete, onComplete, onUpdatePriority, onEdit, onDeleteCompleted, maxPriority = 5 }) => {
+export const TaskList: React.FC<TaskListProps> = ({
+    tasks,
+    scheduledTasks,
+    taskLists,
+    selectedListId,
+    onSelectList,
+    onAddList,
+    onEditList,
+    onDelete,
+    onComplete,
+    onUpdatePriority,
+    onEdit,
+    onDeleteCompleted,
+    maxPriority = 5
+}) => {
     // 完了タスク折りたたみ状態
     const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
 
@@ -31,9 +50,24 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDel
 
     const todayDate = startOfDay(new Date());
 
+    // リストフィルタリング
+    const filterByList = <T extends { listId?: string }>(items: T[]): T[] => {
+        if (selectedListId === null) return items; // すべて表示
+        return items.filter(item => {
+            // listIdが未設定のタスクはデフォルトリストに属する
+            const defaultList = taskLists.find(l => l.isDefault);
+            const itemListId = item.listId || defaultList?.id;
+            return itemListId === selectedListId;
+        });
+    };
+
+    // フィルタリングされたタスク
+    const filteredTasks = filterByList(tasks);
+    const filteredScheduledTasks = filterByList(scheduledTasks);
+
     // 完了/未完了でスケジュール済みタスクを分離
-    const completedScheduled = scheduledTasks.filter(t => t.isCompleted);
-    const activeScheduled = scheduledTasks.filter(t => !t.isCompleted);
+    const completedScheduled = filteredScheduledTasks.filter(t => t.isCompleted);
+    const activeScheduled = filteredScheduledTasks.filter(t => !t.isCompleted);
 
     // 1. 今日のタスク（期限切れ含む）- 未完了のみ
     const dueTasks = activeScheduled
@@ -51,8 +85,8 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDel
         })
         .sort((a, b) => a.scheduledTime - b.scheduledTime);
 
-    const scheduledTaskIds = new Set(scheduledTasks.map(st => st.taskId));
-    const unscheduledTasks = tasks.filter(t => !scheduledTaskIds.has(t.id));
+    const scheduledTaskIds = new Set(filteredScheduledTasks.map(st => st.taskId));
+    const unscheduledTasks = filteredTasks.filter(t => !scheduledTaskIds.has(t.id));
 
     // 未定タスク（優先度順 - 優先度がないものは最後）
     const sortedUnscheduled = [...unscheduledTasks].sort((a, b) => {
@@ -164,17 +198,118 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, scheduledTasks, onDel
         );
     }
 
-    if (tasks.length === 0 && scheduledTasks.length === 0) {
+    if (filteredTasks.length === 0 && filteredScheduledTasks.length === 0) {
         return (
-            <div className="empty-state">
-                <p>📝 タスクがありません</p>
-                <p className="hint">右下の＋ボタンからタスクを追加してください</p>
+            <div className="task-list-container">
+                {/* タブUI */}
+                <div className="list-tabs" style={{
+                    display: 'flex',
+                    gap: '0.5rem',
+                    overflowX: 'auto',
+                    paddingBottom: '0.5rem',
+                    marginBottom: '1rem',
+                    borderBottom: '1px solid var(--border-color)'
+                }}>
+                    {taskLists.map(list => (
+                        <button
+                            key={list.id}
+                            onClick={() => onSelectList(list.isDefault ? null : list.id)}
+                            onContextMenu={(e) => {
+                                e.preventDefault();
+                                onEditList?.(list);
+                            }}
+                            style={{
+                                padding: '0.5rem 1rem',
+                                border: 'none',
+                                background: 'transparent',
+                                borderBottom: (selectedListId === null && list.isDefault) || selectedListId === list.id
+                                    ? `2px solid ${list.color}`
+                                    : '2px solid transparent',
+                                color: (selectedListId === null && list.isDefault) || selectedListId === list.id
+                                    ? list.color
+                                    : 'var(--text-secondary)',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                                fontWeight: (selectedListId === null && list.isDefault) || selectedListId === list.id ? 'bold' : 'normal'
+                            }}
+                        >
+                            {list.name}
+                        </button>
+                    ))}
+                    <button
+                        onClick={onAddList}
+                        style={{
+                            padding: '0.5rem 1rem',
+                            border: 'none',
+                            background: 'transparent',
+                            color: 'var(--text-muted)',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap'
+                        }}
+                    >
+                        + 新しいリスト
+                    </button>
+                </div>
+                <div className="empty-state">
+                    <p>📝 タスクがありません</p>
+                    <p className="hint">右下の＋ボタンからタスクを追加してください</p>
+                </div>
             </div>
         );
     }
 
     return (
         <div className="task-list-container">
+            {/* タブUI */}
+            <div className="list-tabs" style={{
+                display: 'flex',
+                gap: '0.5rem',
+                overflowX: 'auto',
+                paddingBottom: '0.5rem',
+                marginBottom: '1rem',
+                borderBottom: '1px solid var(--border-color)'
+            }}>
+                {taskLists.map(list => (
+                    <button
+                        key={list.id}
+                        onClick={() => onSelectList(list.isDefault ? null : list.id)}
+                        onContextMenu={(e) => {
+                            e.preventDefault();
+                            onEditList?.(list);
+                        }}
+                        style={{
+                            padding: '0.5rem 1rem',
+                            border: 'none',
+                            background: 'transparent',
+                            borderBottom: (selectedListId === null && list.isDefault) || selectedListId === list.id
+                                ? `2px solid ${list.color}`
+                                : '2px solid transparent',
+                            color: (selectedListId === null && list.isDefault) || selectedListId === list.id
+                                ? list.color
+                                : 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            fontWeight: (selectedListId === null && list.isDefault) || selectedListId === list.id ? 'bold' : 'normal'
+                        }}
+                    >
+                        {list.name}
+                    </button>
+                ))}
+                <button
+                    onClick={onAddList}
+                    style={{
+                        padding: '0.5rem 1rem',
+                        border: 'none',
+                        background: 'transparent',
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap'
+                    }}
+                >
+                    + 新しいリスト
+                </button>
+            </div>
+
             <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem', paddingLeft: '0.5rem' }}>タスク一覧</h2>
 
             {/* 今日のタスク */}
