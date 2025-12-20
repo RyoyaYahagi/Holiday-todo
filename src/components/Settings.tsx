@@ -305,7 +305,11 @@ export const Settings: React.FC<SettingsProps> = ({
                                 {onReorderList && (
                                     <>
                                         <button
-                                            onClick={() => onReorderList(list.id, 'up')}
+                                            type="button"
+                                            onClick={() => {
+                                                console.log('[Settings] ▲ clicked for:', list.id);
+                                                onReorderList(list.id, 'up');
+                                            }}
                                             disabled={taskLists.indexOf(list) === 0}
                                             style={{
                                                 padding: '0.2rem 0.4rem',
@@ -320,7 +324,11 @@ export const Settings: React.FC<SettingsProps> = ({
                                             ▲
                                         </button>
                                         <button
-                                            onClick={() => onReorderList(list.id, 'down')}
+                                            type="button"
+                                            onClick={() => {
+                                                console.log('[Settings] ▼ clicked for:', list.id);
+                                                onReorderList(list.id, 'down');
+                                            }}
                                             disabled={taskLists.indexOf(list) === taskLists.length - 1}
                                             style={{
                                                 padding: '0.2rem 0.4rem',
