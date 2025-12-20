@@ -117,6 +117,13 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     const selectedList = taskLists.find(l => l.id === listId);
     const isDefaultList = selectedList?.isDefault ?? true;
 
+    // 非デフォルトリスト選択時に自動モードなら手動に強制切替
+    React.useEffect(() => {
+        if (!isDefaultList && mode === 'auto') {
+            setMode('manual');
+        }
+    }, [isDefaultList, mode]);
+
     /**
      * 曜日選択のトグル
      */

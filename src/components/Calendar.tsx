@@ -169,7 +169,8 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, task
                                     textDecoration: task.isCompleted ? 'line-through' : 'none',
                                     opacity: task.isCompleted ? 0.6 : 1,
                                     borderLeft: `3px solid ${listColor}`,
-                                    paddingLeft: '4px'
+                                    paddingLeft: '4px',
+                                    color: listColor
                                 }}
                             >
                                 {task.title.length > 4 ? task.title.slice(0, 4) + '…' : task.title}
