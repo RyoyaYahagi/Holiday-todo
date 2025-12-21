@@ -305,6 +305,7 @@ export function useSupabaseQuery() {
             const relatedSchedules = currentScheduled.filter(s => s.taskId === task.id);
 
             if (relatedSchedules.length > 0) {
+                // 既存のScheduledTaskを更新
                 const updatedSchedules = relatedSchedules.map(s => ({
                     ...s,
                     title: task.title,
@@ -319,6 +320,22 @@ export function useSupabaseQuery() {
                         : s.scheduledTime
                 }));
                 await supabaseDb.saveScheduledTasks(updatedSchedules);
+            } else if (task.scheduleType === 'time' || task.scheduleType === 'recurrence') {
+                // スケジュール未定→時間指定に変更された場合、ScheduledTaskを新規作成
+                const newScheduledTask: ScheduledTask = {
+                    id: crypto.randomUUID(),
+                    taskId: task.id,
+                    title: task.title,
+                    createdAt: task.createdAt,
+                    scheduleType: task.scheduleType,
+                    priority: task.priority,
+                    manualScheduledTime: task.manualScheduledTime,
+                    recurrence: task.recurrence,
+                    scheduledTime: task.manualScheduledTime || Date.now(),
+                    isCompleted: false,
+                    listId: task.listId
+                };
+                await supabaseDb.saveScheduledTasks([newScheduledTask]);
             }
 
             return task;
