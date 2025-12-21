@@ -194,15 +194,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                     <select
                         id="task-list"
                         value={listId || ''}
-                        onChange={(e) => {
-                            const newListId = e.target.value || undefined;
-                            setListId(newListId);
-                            // デフォルト以外のリストに変更した場合、自動モードなら手動に切替
-                            const newList = taskLists.find(l => l.id === newListId);
-                            if (!newList?.isDefault && mode === 'auto') {
-                                setMode('manual');
-                            }
-                        }}
+                        onChange={(e) => setListId(e.target.value || undefined)}
                         className="task-list-select"
                         style={{
                             width: '100%',
