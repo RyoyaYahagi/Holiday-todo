@@ -87,12 +87,14 @@ function App() {
     }
   };
 
-  // taskListsが読み込まれたら先頭リストを選択
+  // taskListsが読み込まれたら先頭リストを選択（初回のみ）
+  const [hasInitializedList, setHasInitializedList] = useState(false);
   useEffect(() => {
-    if (taskLists.length > 0 && selectedListId === null) {
+    if (taskLists.length > 0 && !hasInitializedList) {
       setSelectedListId(taskLists[0].id);
+      setHasInitializedList(true);
     }
-  }, [taskLists, selectedListId]);
+  }, [taskLists, hasInitializedList]);
 
   const closeTutorial = () => {
     setIsTutorialOpen(false);
