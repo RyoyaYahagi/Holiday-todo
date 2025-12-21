@@ -253,78 +253,33 @@ export const supabaseDb = {
     },
 
     /**
-     * イベントを保存（マージ方式: 既存イベントを保持しつつ追加/更新）
+     * イベントを保存（完全置換方式）
      * 
-     * 同じ日付・イベントタイプが既に存在する場合は更新し、
-     * 存在しない場合は新規追加する。
-     * スケジュール除外/対象のイベントは完全置換する。
+     * 重複問題を防ぐため、既存の通常イベントを全削除してから
+     * 新しいイベントを挿入する。カスタムイベントも同様に置換。
      */
     async saveEvents(events: WorkEvent[]): Promise<void> {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('認証が必要です');
 
-        console.log('[supabaseDb.saveEvents] 開始:', events.length, '件');
+        console.log('[supabaseDb.saveEvents] 開始 (完全置換方式):', events.length, '件');
 
-        // 既存イベントを取得
-        const { data: existingData, error: fetchError } = await supabase
+        // 既存イベントを全削除
+        const { error: deleteError } = await supabase
             .from('events')
-            .select('id, title, start_time, end_time, event_type')
+            .delete()
             .eq('user_id', user.id);
 
-        if (fetchError) {
-            console.error('[supabaseDb.saveEvents] 取得エラー:', fetchError);
-            throw fetchError;
+        if (deleteError) {
+            console.error('[supabaseDb.saveEvents] 削除エラー:', deleteError);
+            throw deleteError;
         }
 
-        const existingEvents = existingData || [];
-
-        // スケジュール除外/対象イベントは一旦削除（トグル操作のため）
-        const customEventTypes = ['スケジュール除外', 'スケジュール対象'];
-        const customEventIds = existingEvents
-            .filter(e => customEventTypes.includes(e.event_type))
-            .map(e => e.id);
-
-        if (customEventIds.length > 0) {
-            const { error: deleteError } = await supabase
-                .from('events')
-                .delete()
-                .in('id', customEventIds);
-
-            if (deleteError) {
-                console.error('[supabaseDb.saveEvents] カスタムイベント削除エラー:', deleteError);
-            }
-        }
-
-        // 新しいイベントをフィルタリング
-        // 既存イベント（カスタム以外）と同じ日付・タイプ・タイトルのものは更新対象から除外
-        const existingNonCustom = existingEvents.filter(e => !customEventTypes.includes(e.event_type));
-
-        // 日付文字列を正規化してキーを作成（形式の違いを吸収）
-        const normalizeDate = (dateStr: string) => new Date(dateStr).toISOString();
-
-        const existingKeys = new Set(
-            existingNonCustom.map(e => `${normalizeDate(e.start_time)}_${e.event_type}_${e.title}`)
-        );
-
-        console.log('[supabaseDb.saveEvents] 既存キー例:', [...existingKeys].slice(0, 3));
-
-        const newEvents = events.filter(event => {
-            const key = `${event.start.toISOString()}_${event.eventType}_${event.title}`;
-            // カスタムイベントは常に追加
-            if (customEventTypes.includes(event.eventType)) return true;
-            // 既存にない場合のみ追加
-            const exists = existingKeys.has(key);
-            if (!exists) {
-                console.log('[supabaseDb.saveEvents] 新規イベント:', key);
-            }
-            return !exists;
-        });
-
-        // 新しいイベントを挿入
-        if (newEvents.length > 0) {
+        // 全イベントを挿入
+        if (events.length > 0) {
             const { error } = await supabase
                 .from('events')
-                .insert(newEvents.map(event => ({
+                .insert(events.map(event => ({
                     user_id: user.id,
                     title: event.title,
                     start_time: event.start.toISOString(),
@@ -338,7 +293,7 @@ export const supabaseDb = {
             }
         }
 
-        console.log('[supabaseDb.saveEvents] 完了:', newEvents.length, '件追加');
+        console.log('[supabaseDb.saveEvents] 完了:', events.length, '件挿入');
     },
 
     /**
