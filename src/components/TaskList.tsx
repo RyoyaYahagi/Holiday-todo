@@ -187,6 +187,7 @@ export const TaskList: React.FC<TaskListProps> = ({
                     className="btn-delete"
                     onClick={(e) => {
                         e.stopPropagation();
+                        if (!window.confirm(`「${item.title}」を削除しますか？`)) return;
                         // 繰り返しタスクのスケジュール済みインスタンスの場合は、そのインスタンスのみ削除
                         if (isScheduled && item.scheduleType === 'recurrence') {
                             onDelete(item.id, true); // ScheduledTask IDを渡す
