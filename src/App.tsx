@@ -70,17 +70,16 @@ function App() {
     const currentList = taskLists[currentIndex];
     const targetList = taskLists[targetIndex];
     console.log('[handleReorderList] 入れ替え:', currentList.name, '<->', targetList.name);
+    console.log('[handleReorderList] 元のcreatedAt:', currentList.createdAt, targetList.createdAt);
 
-    // 一意のタイムスタンプで入れ替え（1ms差をつける）
-    const now = Date.now();
-    const newCurrentCreatedAt = direction === 'up' ? now - 1 : now + 1;
-    const newTargetCreatedAt = direction === 'up' ? now + 1 : now - 1;
+    // createdAtを単純に入れ替える
+    const tempCreatedAt = currentList.createdAt;
 
     try {
       // 同時に更新（順次更新だと再取得で問題が起きる）
       await Promise.all([
-        updateTaskList({ ...currentList, createdAt: newCurrentCreatedAt }),
-        updateTaskList({ ...targetList, createdAt: newTargetCreatedAt })
+        updateTaskList({ ...currentList, createdAt: targetList.createdAt }),
+        updateTaskList({ ...targetList, createdAt: tempCreatedAt })
       ]);
       console.log('[handleReorderList] 完了');
     } catch (err) {

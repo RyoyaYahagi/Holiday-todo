@@ -349,6 +349,53 @@ export const supabaseDb = {
     },
 
     /**
+     * 重複イベントを削除
+     * 
+     * 同じ日付・タイトル・イベントタイプのイベントが複数ある場合、
+     * 最初の1件を残して他を削除する。
+     */
+    async deduplicateEvents(): Promise<number> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('認証が必要です');
+
+        const { data: events, error: fetchError } = await supabase
+            .from('events')
+            .select('id, title, start_time, event_type')
+            .eq('user_id', user.id)
+            .order('start_time', { ascending: true });
+
+        if (fetchError) throw fetchError;
+        if (!events || events.length === 0) return 0;
+
+        // 重複を検出
+        const seen = new Map<string, string>(); // key -> first id
+        const duplicateIds: string[] = [];
+
+        for (const event of events) {
+            const key = `${event.start_time}_${event.event_type}_${event.title}`;
+            if (seen.has(key)) {
+                duplicateIds.push(event.id);
+            } else {
+                seen.set(key, event.id);
+            }
+        }
+
+        console.log('[supabaseDb.deduplicateEvents] 重複:', duplicateIds.length, '件');
+
+        // 重複を削除
+        if (duplicateIds.length > 0) {
+            const { error: deleteError } = await supabase
+                .from('events')
+                .delete()
+                .in('id', duplicateIds);
+
+            if (deleteError) throw deleteError;
+        }
+
+        return duplicateIds.length;
+    },
+
+    /**
      * スケジュール済みタスクを保存
      */
     /**
