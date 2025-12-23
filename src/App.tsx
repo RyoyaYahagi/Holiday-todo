@@ -32,8 +32,6 @@ function App() {
     updateSettings,
     saveEvents,
     saveScheduledTasks,
-    exportData,
-    importData,
     addTaskList,
     updateTaskList,
     deleteTaskList
@@ -395,8 +393,6 @@ function App() {
               settings={settings}
               onUpdateSettings={updateSettings}
               onSaveEvents={saveEvents}
-              onExport={exportData}
-              onImport={importData}
               onNavigateToCalendar={() => setActiveTab('calendar')}
               onShowTutorial={() => setIsTutorialOpen(true)}
               onShowHelp={() => setIsHelpOpen(true)}

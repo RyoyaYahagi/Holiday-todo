@@ -11,8 +11,6 @@ interface SettingsProps {
     settings: AppSettings;
     onUpdateSettings: (s: AppSettings) => void;
     onSaveEvents: (events: WorkEvent[]) => void;
-    onExport: () => Promise<string>;
-    onImport: (json: string) => Promise<void>;
     onNavigateToCalendar?: () => void;
     onShowTutorial?: () => void;
     onShowHelp?: () => void;
@@ -28,8 +26,6 @@ export const Settings: React.FC<SettingsProps> = ({
     settings,
     onUpdateSettings,
     onSaveEvents,
-    onExport,
-    onImport,
     onNavigateToCalendar,
     onShowTutorial,
     onShowHelp,
@@ -49,44 +45,8 @@ export const Settings: React.FC<SettingsProps> = ({
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [googleSyncStatus, setGoogleSyncStatus] = useState<string>('');
     const [isGoogleSyncing, setIsGoogleSyncing] = useState(false);
-
-    // テーマ切り替えコンポーネント
-    const ThemeSelector: React.FC = () => {
-        const { theme, setTheme } = useTheme();
-        const themeOptions: { value: Theme; label: string; icon: string }[] = [
-            { value: 'light', label: 'ライト', icon: '☀️' },
-            { value: 'dark', label: 'ダーク', icon: '🌙' },
-            { value: 'system', label: 'システム', icon: '💻' }
-        ];
-
-        return (
-            <section className="settings-section">
-                <h3>🎨 テーマ設定</h3>
-                <p className="description">
-                    画面の明るさを切り替えます。
-                </p>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {themeOptions.map(opt => (
-                        <button
-                            key={opt.value}
-                            onClick={() => setTheme(opt.value)}
-                            className={theme === opt.value ? 'btn-primary' : 'btn-secondary'}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.3rem',
-                                padding: '0.5rem 0.75rem',
-                                fontSize: '0.9rem'
-                            }}
-                        >
-                            <span>{opt.icon}</span>
-                            <span>{opt.label}</span>
-                        </button>
-                    ))}
-                </div>
-            </section>
-        );
-    };
+    // テーマ設定
+    const { theme, setTheme } = useTheme();
 
     /**
      * Googleカレンダーからイベントを同期
@@ -230,49 +190,31 @@ export const Settings: React.FC<SettingsProps> = ({
         setWebhookTestStatus(result ? '✅ 送信成功！Discordを確認してください' : '❌ 送信失敗 (URLを確認してください)');
     };
 
-    const handleExport = async () => {
-        const json = await onExport();
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `holiday-todo-backup-${new Date().toISOString().split('T')[0]}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-    };
-
-    const handleJsonImport = (e: ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        // Reset input value to allow re-selecting the same file if needed
-        e.target.value = '';
-
-        if (!window.confirm("⚠️ 警告: データをインポートすると、現在のすべてのデータ（タスク、イベント、設定など）が完全に上書きされ、消去されます。\n\n本当に実行しますか？")) {
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            const content = event.target?.result as string;
-            if (content) {
-                try {
-                    await onImport(content);
-                    alert("インポートが完了しました。画面を更新してください。");
-                    window.location.reload();
-                } catch (err) {
-                    alert('インポート失敗');
-                    console.error(err);
-                }
-            }
-        };
-        reader.readAsText(file);
-    };
-
     return (
         <div className="settings-container">
-            {/* テーマ設定 */}
-            <ThemeSelector />
+
+            {/* カレンダー読み込みセクション */}
+            <section className="settings-section">
+                <h3>📅 予定表の読み込み</h3>
+                <p className="description">
+                    Googleカレンダーから予定を読み込み、休日を自動判定してタスクをスケジューリングします。
+                </p>
+
+                <div style={{ marginTop: '1rem' }}>
+                    <button
+                        className="btn-primary"
+                        onClick={handleGoogleCalendarSync}
+                        disabled={isGoogleSyncing}
+                        style={{ background: '#4285f4' }}
+                    >
+                        {isGoogleSyncing ? '🔄 同期中...' : '📅 Googleカレンダーから同期'}
+                    </button>
+                </div>
+                {googleSyncStatus && <p className="status-msg">{googleSyncStatus}</p>}
+                <p className="description" style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    ※ Googleカレンダー同期ができない場合は「その他」から.icsファイルを読み込んでください。
+                </p>
+            </section>
 
             {/* リスト管理セクション */}
             {onAddList && (
@@ -375,141 +317,129 @@ export const Settings: React.FC<SettingsProps> = ({
                         ))}
                     </div>
 
-                    {/* 新規リスト追加フォーム */}
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                        <input
-                            type="text"
-                            id="new-list-name"
-                            placeholder="新しいリスト名..."
-                            style={{
-                                flex: 1,
-                                padding: '0.6rem',
-                                border: '1px solid var(--border-color)',
-                                borderRadius: '8px',
-                                backgroundColor: 'var(--bg-secondary)',
-                                color: 'var(--text-primary)'
-                            }}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    const input = e.target as HTMLInputElement;
-                                    if (input.value.trim()) {
-                                        const newList: TaskListType = {
-                                            id: crypto.randomUUID(),
-                                            name: input.value.trim(),
-                                            color: DEFAULT_LIST_COLORS[taskLists.length % DEFAULT_LIST_COLORS.length],
-                                            isDefault: false,
-                                            createdAt: Date.now()
-                                        };
-                                        onAddList(newList);
-                                        input.value = '';
-                                    }
-                                }
-                            }}
-                        />
-                        <button
-                            className="btn-primary"
-                            style={{ padding: '0.6rem 1rem' }}
-                            onClick={() => {
-                                const input = document.getElementById('new-list-name') as HTMLInputElement;
-                                if (input?.value.trim()) {
-                                    const newList: TaskListType = {
-                                        id: crypto.randomUUID(),
-                                        name: input.value.trim(),
-                                        color: DEFAULT_LIST_COLORS[taskLists.length % DEFAULT_LIST_COLORS.length],
-                                        isDefault: false,
-                                        createdAt: Date.now()
-                                    };
-                                    onAddList(newList);
-                                    input.value = '';
-                                }
-                            }}
-                        >
-                            + 追加
-                        </button>
-                    </div>
-                </section>
-            )}
-
-            {/* チュートリアル・ヘルプ */}
-            {(onShowTutorial || onShowHelp) && (
-                <section className="settings-section">
-                    <h3>📚 ヘルプ & ガイド</h3>
-                    <p className="description">
-                        アプリの使い方を確認できます。
-                    </p>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        {onShowTutorial && (
-                            <button onClick={onShowTutorial} className="btn-secondary">
-                                📖 チュートリアル
-                            </button>
-                        )}
-                        {onShowHelp && (
-                            <button onClick={onShowHelp} className="btn-secondary">
-                                ❓ 詳細ヘルプ
-                            </button>
-                        )}
-                    </div>
-                </section>
-            )}
-
-            {/* カレンダー読み込みセクション */}
-            <section className="settings-section">
-                <h3>📅 予定表の読み込み</h3>
-                <p className="description">
-                    予定表の .ics ファイルを読み込むと、休日を自動判定してタスクをスケジューリングします。
-                </p>
-
-                <button
-                    className="btn-help"
-                    onClick={() => setShowIcsHelp(!showIcsHelp)}
-                >
-                    {showIcsHelp ? '▲ 説明を閉じる' : '▼ .icsファイルの取得方法'}
-                </button>
-
-                {showIcsHelp && (
-                    <div className="help-box">
-                        <h4>📱 Googleカレンダーの場合</h4>
-                        <ol>
-                            <li>PCで <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer">Googleカレンダー</a> を開く</li>
-                            <li>右上の ⚙️ → 「設定」をクリック</li>
-                            <li>左メニューからカレンダーを選択</li>
-                            <li>「カレンダーをエクスポート」をクリック</li>
-                            <li>ダウンロードした .ics ファイルをここでアップロード</li>
-                        </ol>
-
-                        <h4>📝 イベント名の書き方</h4>
-                        <p>カレンダーのイベント名は以下のいずれかにしてください：</p>
-                        <ul>
-                            <li><strong>夜勤</strong> - 夜間の予定</li>
-                            <li><strong>日勤</strong> - 日中の予定</li>
-                            <li><strong>休み</strong> - 休日（タスクを予定可能）</li>
-                        </ul>
-
-                        <h4>🎯 休日の判定ルール</h4>
-                        <ul>
-                            <li>「休み」イベントがある日 → 休日</li>
-                            <li>イベントがない日 → 休日</li>
-                        </ul>
-                    </div>
-                )}
-
-                <div className="file-upload-area" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <label className="btn-primary file-label">
-                        📁 .icsファイルを選択
-                        <input type="file" accept=".ics" onChange={handleFileUpload} style={{ display: 'none' }} />
-                    </label>
-                    <span style={{ color: '#888', fontSize: '0.9rem' }}>または</span>
+                    {/* 新規リスト追加ボタン */}
                     <button
                         className="btn-primary"
-                        onClick={handleGoogleCalendarSync}
-                        disabled={isGoogleSyncing}
-                        style={{ background: '#4285f4' }}
+                        style={{ padding: '0.6rem 1rem', width: '100%' }}
+                        onClick={() => {
+                            const name = window.prompt('新しいリスト名を入力してください:');
+                            if (name?.trim()) {
+                                const newList: TaskListType = {
+                                    id: crypto.randomUUID(),
+                                    name: name.trim(),
+                                    color: DEFAULT_LIST_COLORS[taskLists.length % DEFAULT_LIST_COLORS.length],
+                                    isDefault: false,
+                                    createdAt: Date.now()
+                                };
+                                onAddList(newList);
+                            }
+                        }}
                     >
-                        {isGoogleSyncing ? '🔄 同期中...' : '📅 Googleカレンダーから同期'}
+                        + 新しいリストを追加
                     </button>
+                </section>
+            )}
+
+            {/* スケジュール設定セクション */}
+            <section className="settings-section">
+                <h3>⏰ スケジュール設定</h3>
+                <p className="description">
+                    タスクの自動スケジューリングに関する設定です。変更後は「保存」ボタンを押してください。
+                </p>
+
+                <div className="form-group">
+                    <label>タスクの時間間隔</label>
+                    <select
+                        value={localSettings.scheduleInterval}
+                        onChange={(e) => setLocalSettings({ ...localSettings, scheduleInterval: parseFloat(e.target.value) })}
+                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginLeft: '10px' }}
+                    >
+                        <option value={0.5}>30分</option>
+                        <option value={1}>1時間</option>
+                        <option value={1.5}>1時間半</option>
+                        <option value={2}>2時間</option>
+                        <option value={2.5}>2時間半</option>
+                        <option value={3}>3時間</option>
+                        <option value={4}>4時間</option>
+                        <option value={5}>5時間</option>
+                        <option value={6}>6時間</option>
+                    </select>
                 </div>
-                {importStatus && <p className="status-msg">{importStatus}</p>}
-                {googleSyncStatus && <p className="status-msg">{googleSyncStatus}</p>}
+
+                <div className="form-group" style={{ marginTop: '1rem' }}>
+                    <label>日勤後のタスク開始時間</label>
+                    <p className="description" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                        日勤や休みの日に、タスクを開始する時間
+                    </p>
+                    <select
+                        value={localSettings.startTimeMorning}
+                        onChange={(e) => setLocalSettings({ ...localSettings, startTimeMorning: parseInt(e.target.value) })}
+                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--input-bg, var(--card-bg))', color: 'var(--text-primary)', marginTop: '0.3rem' }}
+                    >
+                        {Array.from({ length: 24 }, (_, i) => i).map(h => (
+                            <option key={h} value={h}>{h}:00</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="form-group" style={{ marginTop: '1rem' }}>
+                    <label>夜勤明けのタスク開始時間</label>
+                    <p className="description" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                        夜勤明けの日に、タスクを開始する時間
+                    </p>
+                    <select
+                        value={localSettings.startTimeAfternoon}
+                        onChange={(e) => setLocalSettings({ ...localSettings, startTimeAfternoon: parseInt(e.target.value) })}
+                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--input-bg, var(--card-bg))', color: 'var(--text-primary)', marginTop: '0.3rem' }}
+                    >
+                        {Array.from({ length: 24 }, (_, i) => i).map(h => (
+                            <option key={h} value={h}>{h}:00</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="form-group" style={{ marginTop: '1rem' }}>
+                    <label>1日の最大タスク数</label>
+                    <select
+                        value={localSettings.maxTasksPerDay}
+                        onChange={(e) => setLocalSettings({ ...localSettings, maxTasksPerDay: parseInt(e.target.value) })}
+                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginLeft: '10px' }}
+                    >
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                            <option key={n} value={n}>{n}件</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="section-divider" style={{ margin: '1.5rem 0', borderTop: '2px dashed #eee' }} />
+
+                <div className="form-group">
+                    <label>最大優先度 (1〜5)</label>
+                    <select
+                        value={localSettings.maxPriority || 5}
+                        onChange={(e) => setLocalSettings({ ...localSettings, maxPriority: parseInt(e.target.value) })}
+                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginLeft: '10px' }}
+                    >
+                        {[1, 2, 3, 4, 5].map(n => (
+                            <option key={n} value={n}>{n}</option>
+                        ))}
+                    </select>
+                    <p className="description" style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.2rem' }}>
+                        タスクの優先度の選択肢を制限します。（例: 3に設定するとP1〜P3のみ選択可能）
+                    </p>
+                </div>
+
+                <div className="action-buttons" style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <button onClick={handleReset} className="btn-secondary">
+                            ↩️ 元に戻す
+                        </button>
+                        <button onClick={handleSave} className="btn-primary" style={{ padding: '0.8rem 2rem', fontSize: '1.1rem', width: 'auto' }}>
+                            💾 設定を保存する
+                        </button>
+                    </div>
+                    {saveStatus && <p className="status-msg" style={{ color: '#4caf50', fontWeight: 'bold' }}>{saveStatus}</p>}
+                </div>
             </section>
 
             {/* Discord通知セクション */}
@@ -618,132 +548,111 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
             </section>
 
-            {/* スケジュール設定セクション */}
-            <section className="settings-section">
-                <h3>⏰ スケジュール設定</h3>
-                <p className="description">
-                    タスクの自動スケジューリングに関する設定です。変更後は「保存」ボタンを押してください。
-                </p>
-
-                <div className="form-group">
-                    <label>タスクの時間間隔</label>
-                    <select
-                        value={localSettings.scheduleInterval}
-                        onChange={(e) => setLocalSettings({ ...localSettings, scheduleInterval: parseFloat(e.target.value) })}
-                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginLeft: '10px' }}
-                    >
-                        <option value={0.5}>30分</option>
-                        <option value={1}>1時間</option>
-                        <option value={1.5}>1時間半</option>
-                        <option value={2}>2時間</option>
-                        <option value={2.5}>2時間半</option>
-                        <option value={3}>3時間</option>
-                        <option value={4}>4時間</option>
-                        <option value={5}>5時間</option>
-                        <option value={6}>6時間</option>
-                    </select>
-                </div>
-
-                <div className="form-group" style={{ marginTop: '1rem' }}>
-                    <label>日勤後のタスク開始時間</label>
-                    <p className="description" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                        日勤や休みの日に、タスクを開始する時間
+            {/* チュートリアル・ヘルプ */}
+            {(onShowTutorial || onShowHelp) && (
+                <section className="settings-section">
+                    <h3>📚 ヘルプ & ガイド</h3>
+                    <p className="description">
+                        アプリの使い方を確認できます。
                     </p>
-                    <select
-                        value={localSettings.startTimeMorning}
-                        onChange={(e) => setLocalSettings({ ...localSettings, startTimeMorning: parseInt(e.target.value) })}
-                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--input-bg, var(--card-bg))', color: 'var(--text-primary)', marginTop: '0.3rem' }}
-                    >
-                        {Array.from({ length: 24 }, (_, i) => i).map(h => (
-                            <option key={h} value={h}>{h}:00</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="form-group" style={{ marginTop: '1rem' }}>
-                    <label>夜勤明けのタスク開始時間</label>
-                    <p className="description" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                        夜勤明けの日に、タスクを開始する時間
-                    </p>
-                    <select
-                        value={localSettings.startTimeAfternoon}
-                        onChange={(e) => setLocalSettings({ ...localSettings, startTimeAfternoon: parseInt(e.target.value) })}
-                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--input-bg, var(--card-bg))', color: 'var(--text-primary)', marginTop: '0.3rem' }}
-                    >
-                        {Array.from({ length: 24 }, (_, i) => i).map(h => (
-                            <option key={h} value={h}>{h}:00</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="form-group" style={{ marginTop: '1rem' }}>
-                    <label>1日の最大タスク数</label>
-                    <select
-                        value={localSettings.maxTasksPerDay}
-                        onChange={(e) => setLocalSettings({ ...localSettings, maxTasksPerDay: parseInt(e.target.value) })}
-                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginLeft: '10px' }}
-                    >
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-                            <option key={n} value={n}>{n}件</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="section-divider" style={{ margin: '1.5rem 0', borderTop: '2px dashed #eee' }} />
-
-                <div className="form-group">
-                    <label>最大優先度 (1〜5)</label>
-                    <select
-                        value={localSettings.maxPriority || 5}
-                        onChange={(e) => setLocalSettings({ ...localSettings, maxPriority: parseInt(e.target.value) })}
-                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginLeft: '10px' }}
-                    >
-                        {[1, 2, 3, 4, 5].map(n => (
-                            <option key={n} value={n}>{n}</option>
-                        ))}
-                    </select>
-                    <p className="description" style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.2rem' }}>
-                        タスクの優先度の選択肢を制限します。（例: 3に設定するとP1〜P3のみ選択可能）
-                    </p>
-                </div>
-
-                <div className="action-buttons" style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                        <button onClick={handleReset} className="btn-secondary">
-                            ↩️ 元に戻す
-                        </button>
-                        <button onClick={handleSave} className="btn-primary" style={{ padding: '0.8rem 2rem', fontSize: '1.1rem', width: 'auto' }}>
-                            💾 設定を保存する
-                        </button>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {onShowTutorial && (
+                            <button onClick={onShowTutorial} className="btn-secondary">
+                                📖 チュートリアル
+                            </button>
+                        )}
+                        {onShowHelp && (
+                            <button onClick={onShowHelp} className="btn-secondary">
+                                ❓ 詳細ヘルプ
+                            </button>
+                        )}
                     </div>
-                    {saveStatus && <p className="status-msg" style={{ color: '#4caf50', fontWeight: 'bold' }}>{saveStatus}</p>}
-                </div>
-            </section>
+                </section>
+            )}
 
-            {/* 詳細設定セクション（データ管理など） */}
+            {/* その他セクション（テーマ設定、ICSファイル読み込み） */}
             <section className="settings-section">
                 <div
                     className="section-header-toggle"
                     onClick={() => setShowAdvanced(!showAdvanced)}
                     style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                 >
-                    <h3>🔧 詳細設定 (データ管理)</h3>
+                    <h3>⚙️ その他</h3>
                     <span style={{ fontSize: '1.2rem' }}>{showAdvanced ? '▲' : '▼'}</span>
                 </div>
 
                 {showAdvanced && (
                     <div className="advanced-content fade-in" style={{ marginTop: '1rem' }}>
-                        <p className="description">
-                            データのバックアップ（エクスポート）や復元（インポート）を行えます。
-                            通常はクラウドに自動保存されるため操作不要です。
-                        </p>
-                        <div className="data-actions">
-                            <button onClick={handleExport} className="btn-secondary">📤 バックアップ（ファイルに保存）</button>
-                            <div className="import-area">
-                                <label className="btn-secondary" style={{ backgroundColor: '#f0f0f0', color: '#333' }}>
-                                    📥 復元（ファイルから読み込み）
-                                    <input type="file" accept=".json" onChange={handleJsonImport} style={{ display: 'none' }} />
+                        {/* テーマ設定 */}
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <h4>🎨 テーマ設定</h4>
+                            <p className="description">画面の明るさを切り替えます。</p>
+                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                                {[
+                                    { value: 'system' as Theme, label: '自動', icon: '🖥️' },
+                                    { value: 'light' as Theme, label: 'ライト', icon: '☀️' },
+                                    { value: 'dark' as Theme, label: 'ダーク', icon: '🌙' }
+                                ].map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => setTheme(opt.value)}
+                                        className={theme === opt.value ? 'btn-primary' : 'btn-secondary'}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.3rem',
+                                            padding: '0.5rem 0.75rem',
+                                            fontSize: '0.9rem'
+                                        }}
+                                    >
+                                        <span>{opt.icon}</span>
+                                        <span>{opt.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* ICSファイル読み込み */}
+                        <div>
+                            <h4>📁 予定表ファイルの読み込み</h4>
+                            <p className="description">
+                                Googleカレンダー同期ができない場合は、ここから.icsファイルを読み込んでください。
+                            </p>
+                            <button
+                                className="btn-help"
+                                onClick={() => setShowIcsHelp(!showIcsHelp)}
+                                style={{ marginTop: '0.5rem' }}
+                            >
+                                {showIcsHelp ? '▲ 説明を閉じる' : '▼ .icsファイルの取得方法'}
+                            </button>
+
+                            {showIcsHelp && (
+                                <div className="help-box">
+                                    <h4>📱 Googleカレンダーの場合</h4>
+                                    <ol>
+                                        <li>PCで <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer">Googleカレンダー</a> を開く</li>
+                                        <li>右上の ⚙️ → 「設定」をクリック</li>
+                                        <li>左メニューからカレンダーを選択</li>
+                                        <li>「カレンダーをエクスポート」をクリック</li>
+                                        <li>ダウンロードした .ics ファイルをここでアップロード</li>
+                                    </ol>
+
+                                    <h4>📝 イベント名の書き方</h4>
+                                    <p>カレンダーのイベント名は以下のいずれかにしてください：</p>
+                                    <ul>
+                                        <li><strong>夜勤</strong> - 次の日が空くパターン</li>
+                                        <li><strong>日勤</strong> - 朝から夕方まで予定あり</li>
+                                        <li><strong>休み</strong> / <strong>休日</strong> - 終日タスク可能</li>
+                                    </ul>
+                                </div>
+                            )}
+
+                            <div style={{ marginTop: '1rem' }}>
+                                <label className="btn-secondary file-label">
+                                    📁 .icsファイルを選択
+                                    <input type="file" accept=".ics" onChange={handleFileUpload} style={{ display: 'none' }} />
                                 </label>
+                                {importStatus && <p className="status-msg" style={{ marginTop: '0.5rem' }}>{importStatus}</p>}
                             </div>
                         </div>
                     </div>
