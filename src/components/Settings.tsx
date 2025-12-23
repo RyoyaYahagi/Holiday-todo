@@ -193,6 +193,28 @@ export const Settings: React.FC<SettingsProps> = ({
     return (
         <div className="settings-container">
 
+            {/* カレンダー読み込みセクション */}
+            <section className="settings-section">
+                <h3>📅 予定表の読み込み</h3>
+                <p className="description">
+                    Googleカレンダーから予定を読み込み、休日を自動判定してタスクをスケジューリングします。
+                </p>
+
+                <div style={{ marginTop: '1rem' }}>
+                    <button
+                        className="btn-primary"
+                        onClick={handleGoogleCalendarSync}
+                        disabled={isGoogleSyncing}
+                        style={{ background: '#4285f4' }}
+                    >
+                        {isGoogleSyncing ? '🔄 同期中...' : '📅 Googleカレンダーから同期'}
+                    </button>
+                </div>
+                {googleSyncStatus && <p className="status-msg">{googleSyncStatus}</p>}
+                <p className="description" style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    ※ Googleカレンダー同期ができない場合は「その他」から.icsファイルを読み込んでください。
+                </p>
+            </section>
 
             {/* リスト管理セクション */}
             {onAddList && (
@@ -318,49 +340,106 @@ export const Settings: React.FC<SettingsProps> = ({
                 </section>
             )}
 
-            {/* チュートリアル・ヘルプ */}
-            {(onShowTutorial || onShowHelp) && (
-                <section className="settings-section">
-                    <h3>📚 ヘルプ & ガイド</h3>
-                    <p className="description">
-                        アプリの使い方を確認できます。
-                    </p>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        {onShowTutorial && (
-                            <button onClick={onShowTutorial} className="btn-secondary">
-                                📖 チュートリアル
-                            </button>
-                        )}
-                        {onShowHelp && (
-                            <button onClick={onShowHelp} className="btn-secondary">
-                                ❓ 詳細ヘルプ
-                            </button>
-                        )}
-                    </div>
-                </section>
-            )}
-
-            {/* カレンダー読み込みセクション */}
+            {/* スケジュール設定セクション */}
             <section className="settings-section">
-                <h3>📅 予定表の読み込み</h3>
+                <h3>⏰ スケジュール設定</h3>
                 <p className="description">
-                    Googleカレンダーから予定を読み込み、休日を自動判定してタスクをスケジューリングします。
+                    タスクの自動スケジューリングに関する設定です。変更後は「保存」ボタンを押してください。
                 </p>
 
-                <div style={{ marginTop: '1rem' }}>
-                    <button
-                        className="btn-primary"
-                        onClick={handleGoogleCalendarSync}
-                        disabled={isGoogleSyncing}
-                        style={{ background: '#4285f4' }}
+                <div className="form-group">
+                    <label>タスクの時間間隔</label>
+                    <select
+                        value={localSettings.scheduleInterval}
+                        onChange={(e) => setLocalSettings({ ...localSettings, scheduleInterval: parseFloat(e.target.value) })}
+                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginLeft: '10px' }}
                     >
-                        {isGoogleSyncing ? '🔄 同期中...' : '📅 Googleカレンダーから同期'}
-                    </button>
+                        <option value={0.5}>30分</option>
+                        <option value={1}>1時間</option>
+                        <option value={1.5}>1時間半</option>
+                        <option value={2}>2時間</option>
+                        <option value={2.5}>2時間半</option>
+                        <option value={3}>3時間</option>
+                        <option value={4}>4時間</option>
+                        <option value={5}>5時間</option>
+                        <option value={6}>6時間</option>
+                    </select>
                 </div>
-                {googleSyncStatus && <p className="status-msg">{googleSyncStatus}</p>}
-                <p className="description" style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    ※ Googleカレンダー同期ができない場合は「その他」から.icsファイルを読み込んでください。
-                </p>
+
+                <div className="form-group" style={{ marginTop: '1rem' }}>
+                    <label>日勤後のタスク開始時間</label>
+                    <p className="description" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                        日勤や休みの日に、タスクを開始する時間
+                    </p>
+                    <select
+                        value={localSettings.startTimeMorning}
+                        onChange={(e) => setLocalSettings({ ...localSettings, startTimeMorning: parseInt(e.target.value) })}
+                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--input-bg, var(--card-bg))', color: 'var(--text-primary)', marginTop: '0.3rem' }}
+                    >
+                        {Array.from({ length: 24 }, (_, i) => i).map(h => (
+                            <option key={h} value={h}>{h}:00</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="form-group" style={{ marginTop: '1rem' }}>
+                    <label>夜勤明けのタスク開始時間</label>
+                    <p className="description" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                        夜勤明けの日に、タスクを開始する時間
+                    </p>
+                    <select
+                        value={localSettings.startTimeAfternoon}
+                        onChange={(e) => setLocalSettings({ ...localSettings, startTimeAfternoon: parseInt(e.target.value) })}
+                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--input-bg, var(--card-bg))', color: 'var(--text-primary)', marginTop: '0.3rem' }}
+                    >
+                        {Array.from({ length: 24 }, (_, i) => i).map(h => (
+                            <option key={h} value={h}>{h}:00</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="form-group" style={{ marginTop: '1rem' }}>
+                    <label>1日の最大タスク数</label>
+                    <select
+                        value={localSettings.maxTasksPerDay}
+                        onChange={(e) => setLocalSettings({ ...localSettings, maxTasksPerDay: parseInt(e.target.value) })}
+                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginLeft: '10px' }}
+                    >
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                            <option key={n} value={n}>{n}件</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="section-divider" style={{ margin: '1.5rem 0', borderTop: '2px dashed #eee' }} />
+
+                <div className="form-group">
+                    <label>最大優先度 (1〜5)</label>
+                    <select
+                        value={localSettings.maxPriority || 5}
+                        onChange={(e) => setLocalSettings({ ...localSettings, maxPriority: parseInt(e.target.value) })}
+                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginLeft: '10px' }}
+                    >
+                        {[1, 2, 3, 4, 5].map(n => (
+                            <option key={n} value={n}>{n}</option>
+                        ))}
+                    </select>
+                    <p className="description" style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.2rem' }}>
+                        タスクの優先度の選択肢を制限します。（例: 3に設定するとP1〜P3のみ選択可能）
+                    </p>
+                </div>
+
+                <div className="action-buttons" style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <button onClick={handleReset} className="btn-secondary">
+                            ↩️ 元に戻す
+                        </button>
+                        <button onClick={handleSave} className="btn-primary" style={{ padding: '0.8rem 2rem', fontSize: '1.1rem', width: 'auto' }}>
+                            💾 設定を保存する
+                        </button>
+                    </div>
+                    {saveStatus && <p className="status-msg" style={{ color: '#4caf50', fontWeight: 'bold' }}>{saveStatus}</p>}
+                </div>
             </section>
 
             {/* Discord通知セクション */}
@@ -469,107 +548,27 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
             </section>
 
-            {/* スケジュール設定セクション */}
-            <section className="settings-section">
-                <h3>⏰ スケジュール設定</h3>
-                <p className="description">
-                    タスクの自動スケジューリングに関する設定です。変更後は「保存」ボタンを押してください。
-                </p>
-
-                <div className="form-group">
-                    <label>タスクの時間間隔</label>
-                    <select
-                        value={localSettings.scheduleInterval}
-                        onChange={(e) => setLocalSettings({ ...localSettings, scheduleInterval: parseFloat(e.target.value) })}
-                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginLeft: '10px' }}
-                    >
-                        <option value={0.5}>30分</option>
-                        <option value={1}>1時間</option>
-                        <option value={1.5}>1時間半</option>
-                        <option value={2}>2時間</option>
-                        <option value={2.5}>2時間半</option>
-                        <option value={3}>3時間</option>
-                        <option value={4}>4時間</option>
-                        <option value={5}>5時間</option>
-                        <option value={6}>6時間</option>
-                    </select>
-                </div>
-
-                <div className="form-group" style={{ marginTop: '1rem' }}>
-                    <label>日勤後のタスク開始時間</label>
-                    <p className="description" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                        日勤や休みの日に、タスクを開始する時間
+            {/* チュートリアル・ヘルプ */}
+            {(onShowTutorial || onShowHelp) && (
+                <section className="settings-section">
+                    <h3>📚 ヘルプ & ガイド</h3>
+                    <p className="description">
+                        アプリの使い方を確認できます。
                     </p>
-                    <select
-                        value={localSettings.startTimeMorning}
-                        onChange={(e) => setLocalSettings({ ...localSettings, startTimeMorning: parseInt(e.target.value) })}
-                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--input-bg, var(--card-bg))', color: 'var(--text-primary)', marginTop: '0.3rem' }}
-                    >
-                        {Array.from({ length: 24 }, (_, i) => i).map(h => (
-                            <option key={h} value={h}>{h}:00</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="form-group" style={{ marginTop: '1rem' }}>
-                    <label>夜勤明けのタスク開始時間</label>
-                    <p className="description" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                        夜勤明けの日に、タスクを開始する時間
-                    </p>
-                    <select
-                        value={localSettings.startTimeAfternoon}
-                        onChange={(e) => setLocalSettings({ ...localSettings, startTimeAfternoon: parseInt(e.target.value) })}
-                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--input-bg, var(--card-bg))', color: 'var(--text-primary)', marginTop: '0.3rem' }}
-                    >
-                        {Array.from({ length: 24 }, (_, i) => i).map(h => (
-                            <option key={h} value={h}>{h}:00</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="form-group" style={{ marginTop: '1rem' }}>
-                    <label>1日の最大タスク数</label>
-                    <select
-                        value={localSettings.maxTasksPerDay}
-                        onChange={(e) => setLocalSettings({ ...localSettings, maxTasksPerDay: parseInt(e.target.value) })}
-                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginLeft: '10px' }}
-                    >
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-                            <option key={n} value={n}>{n}件</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="section-divider" style={{ margin: '1.5rem 0', borderTop: '2px dashed #eee' }} />
-
-                <div className="form-group">
-                    <label>最大優先度 (1〜5)</label>
-                    <select
-                        value={localSettings.maxPriority || 5}
-                        onChange={(e) => setLocalSettings({ ...localSettings, maxPriority: parseInt(e.target.value) })}
-                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginLeft: '10px' }}
-                    >
-                        {[1, 2, 3, 4, 5].map(n => (
-                            <option key={n} value={n}>{n}</option>
-                        ))}
-                    </select>
-                    <p className="description" style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.2rem' }}>
-                        タスクの優先度の選択肢を制限します。（例: 3に設定するとP1〜P3のみ選択可能）
-                    </p>
-                </div>
-
-                <div className="action-buttons" style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                        <button onClick={handleReset} className="btn-secondary">
-                            ↩️ 元に戻す
-                        </button>
-                        <button onClick={handleSave} className="btn-primary" style={{ padding: '0.8rem 2rem', fontSize: '1.1rem', width: 'auto' }}>
-                            💾 設定を保存する
-                        </button>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {onShowTutorial && (
+                            <button onClick={onShowTutorial} className="btn-secondary">
+                                📖 チュートリアル
+                            </button>
+                        )}
+                        {onShowHelp && (
+                            <button onClick={onShowHelp} className="btn-secondary">
+                                ❓ 詳細ヘルプ
+                            </button>
+                        )}
                     </div>
-                    {saveStatus && <p className="status-msg" style={{ color: '#4caf50', fontWeight: 'bold' }}>{saveStatus}</p>}
-                </div>
-            </section>
+                </section>
+            )}
 
             {/* その他セクション（テーマ設定、ICSファイル読み込み） */}
             <section className="settings-section">
