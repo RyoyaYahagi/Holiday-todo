@@ -235,7 +235,7 @@ Deno.serve(async (req) => {
                         // JSTに変換して表示
                         const jstH = (time.getUTCHours() + 9) % 24
                         const jstM = time.getUTCMinutes()
-                        return `・${jstH.toString().padStart(2, '0')}:${jstM.toString().padStart(2, '0')} - ${t.title}`
+                        return `・${jstH.toString().padStart(2, '0')}:${jstM.toString().padStart(2, '0')} - ${t.title} (優先度: ${t.priority})`
                     }).join('\n')
 
                     const sent = await sendDiscordNotification(
