@@ -5,7 +5,8 @@ import type { AppSettings } from '../types';
 
 // Mock types
 const mockSettings: AppSettings = {
-    discordWebhookUrl: 'https://discord.com/api/webhooks/test',
+    lineChannelAccessToken: 'test-channel-access-token',
+    lineUserId: 'U1234567890123456789012345678901',
     notifyOnDayBefore: false,
     notifyDayBeforeTime: '21:00',
     notifyBeforeTask: false,
@@ -38,7 +39,7 @@ describe('Settings Component', () => {
     it('renders correctly with initial settings', () => {
         render(<Settings {...defaultProps} />);
 
-        expect(screen.getByDisplayValue(mockSettings.discordWebhookUrl)).toBeInTheDocument();
+        expect(screen.getByDisplayValue(mockSettings.lineUserId)).toBeInTheDocument();
         // 保存ボタンが複数存在するため、少なくとも1つ存在することを確認
         expect(screen.getAllByRole('button', { name: /保存/i }).length).toBeGreaterThan(0);
     });
@@ -46,8 +47,8 @@ describe('Settings Component', () => {
     it('does not call onUpdateSettings when values change but save is not clicked', () => {
         render(<Settings {...defaultProps} />);
 
-        const webhookInput = screen.getByDisplayValue(mockSettings.discordWebhookUrl);
-        fireEvent.change(webhookInput, { target: { value: 'https://new-url.com' } });
+        const userIdInput = screen.getByDisplayValue(mockSettings.lineUserId);
+        fireEvent.change(userIdInput, { target: { value: 'U9999999999999999999999999999999' } });
 
         expect(mockOnUpdateSettings).not.toHaveBeenCalled();
     });
@@ -55,9 +56,9 @@ describe('Settings Component', () => {
     it('calls onUpdateSettings with new values when save is clicked', () => {
         render(<Settings {...defaultProps} />);
 
-        const webhookInput = screen.getByDisplayValue(mockSettings.discordWebhookUrl);
-        const newUrl = 'https://new-url.com';
-        fireEvent.change(webhookInput, { target: { value: newUrl } });
+        const userIdInput = screen.getByDisplayValue(mockSettings.lineUserId);
+        const newUserId = 'U9999999999999999999999999999999';
+        fireEvent.change(userIdInput, { target: { value: newUserId } });
 
         // 複数の保存ボタンがあるため、「設定を保存する」という完全なテキストを持つボタンを探す
         const saveButtons = screen.getAllByRole('button', { name: /保存/i });
@@ -66,7 +67,7 @@ describe('Settings Component', () => {
 
         expect(mockOnUpdateSettings).toHaveBeenCalledWith({
             ...mockSettings,
-            discordWebhookUrl: newUrl
+            lineUserId: newUserId
         });
 
         // Success message should appear (複数の箇所に表示される可能性がある)
@@ -80,8 +81,8 @@ describe('Settings Component', () => {
 
         render(<Settings {...defaultProps} />);
 
-        const webhookInput = screen.getByDisplayValue(mockSettings.discordWebhookUrl);
-        fireEvent.change(webhookInput, { target: { value: 'https://changed-url.com' } });
+        const userIdInput = screen.getByDisplayValue(mockSettings.lineUserId);
+        fireEvent.change(userIdInput, { target: { value: 'U9999999999999999999999999999999' } });
 
         // 複数の元に戻すボタンがあるため、最初のものを使用
         const resetButtons = screen.getAllByRole('button', { name: /元に戻す/i });
@@ -90,7 +91,7 @@ describe('Settings Component', () => {
 
         expect(confirmSpy).toHaveBeenCalled();
         // Should revert to original value
-        expect(screen.getByDisplayValue(mockSettings.discordWebhookUrl)).toBeInTheDocument();
+        expect(screen.getByDisplayValue(mockSettings.lineUserId)).toBeInTheDocument();
         // Save should not be called
         expect(mockOnUpdateSettings).not.toHaveBeenCalled();
 

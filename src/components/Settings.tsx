@@ -3,7 +3,7 @@ import type { AppSettings, WorkEvent, TaskList as TaskListType } from '../types'
 import { DEFAULT_LIST_COLORS } from '../types';
 import { IcsParser } from '../lib/icsParser';
 import { GoogleCalendarClient } from '../lib/googleCalendar';
-import { sendDiscordNotification } from '../lib/discordWebhook';
+import { sendLineTestNotification } from '../lib/lineNotification';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme, type Theme } from '../hooks/useTheme';
 
@@ -41,7 +41,7 @@ export const Settings: React.FC<SettingsProps> = ({
     const [webhookTestStatus, setWebhookTestStatus] = useState<string>('');
     const [saveStatus, setSaveStatus] = useState<string>('');
     const [showIcsHelp, setShowIcsHelp] = useState(false);
-    const [showDiscordHelp, setShowDiscordHelp] = useState(false);
+    const [showLineHelp, setShowLineHelp] = useState(false);
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [googleSyncStatus, setGoogleSyncStatus] = useState<string>('');
     const [isGoogleSyncing, setIsGoogleSyncing] = useState(false);
@@ -166,28 +166,29 @@ export const Settings: React.FC<SettingsProps> = ({
         reader.readAsText(file);
     };
 
-    const handleWebhookTest = async () => {
-        const url = localSettings.discordWebhookUrl;
+    const handleLineNotificationTest = async () => {
+        const token = localSettings.lineChannelAccessToken;
+        const userId = localSettings.lineUserId;
 
-        if (!url) {
-            setWebhookTestStatus('❌ Webhook URLを入力してください');
+        if (!token) {
+            setWebhookTestStatus('❌ チャンネルアクセストークンを入力してください');
             return;
         }
 
-        // Discord Webhook URL形式のバリデーション
-        const discordWebhookPattern = /^https:\/\/discord\.com\/api\/webhooks\/\d+\/[\w-]+$/;
-        if (!discordWebhookPattern.test(url)) {
-            setWebhookTestStatus('❌ 正しいDiscord Webhook URL形式ではありません');
+        if (!userId) {
+            setWebhookTestStatus('❌ ユーザーIDを入力してください');
+            return;
+        }
+
+        // ユーザーID形式のバリデーション（Uで始まる33文字）
+        if (!/^U[a-f0-9]{32}$/i.test(userId)) {
+            setWebhookTestStatus('❌ ユーザーIDの形式が正しくありません（Uで始まる33文字）');
             return;
         }
 
         setWebhookTestStatus('送信中...');
-        const result = await sendDiscordNotification(
-            url,
-            [{ id: 'test', taskId: 'test', title: 'テストタスク', priority: 5, createdAt: 0, scheduledTime: Date.now(), isCompleted: false, scheduleType: 'priority' }],
-            '【テスト通知】これはテスト通知です。'
-        );
-        setWebhookTestStatus(result ? '✅ 送信成功！Discordを確認してください' : '❌ 送信失敗 (URLを確認してください)');
+        const result = await sendLineTestNotification(token, userId);
+        setWebhookTestStatus(result ? '✅ 送信成功！LINEを確認してください' : '❌ 送信失敗 (設定を確認してください)');
     };
 
     return (
@@ -442,32 +443,31 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
             </section>
 
-            {/* Discord通知セクション */}
+            {/* LINE通知セクション */}
             <section className="settings-section">
-                <h3>💬 Discord 通知設定</h3>
+                <h3>💬 LINE 通知設定</h3>
                 <p className="description">
-                    休日の前日夜やタスク開始前に、Discordへ通知を送信します。
+                    休日の前日夜やタスク開始前に、LINEへ通知を送信します。
                 </p>
 
                 <button
                     className="btn-help"
-                    onClick={() => setShowDiscordHelp(!showDiscordHelp)}
+                    onClick={() => setShowLineHelp(!showLineHelp)}
                 >
-                    {showDiscordHelp ? '▲ 説明を閉じる' : '▼ Webhook URLの取得方法'}
+                    {showLineHelp ? '▲ 説明を閉じる' : '▼ LINE Bot設定方法'}
                 </button>
 
-                {showDiscordHelp && (
+                {showLineHelp && (
                     <div className="help-box">
-                        <h4>🔧 Webhook URLの作成手順</h4>
+                        <h4>🔧 LINE Bot作成手順</h4>
                         <ol>
-                            <li>Discordアプリを開く</li>
-                            <li>通知を受け取りたいサーバーで、サーバー名をクリック</li>
-                            <li>「サーバー設定」→「連携サービス」→「ウェブフック」</li>
-                            <li>「新しいウェブフック」をクリック</li>
-                            <li>名前を設定（例：Holiday Todo）</li>
-                            <li>通知を送る<strong>チャンネル</strong>を選択</li>
-                            <li>「ウェブフックURLをコピー」をクリック</li>
-                            <li>コピーしたURLを下の入力欄に貼り付け</li>
+                            <li><a href="https://developers.line.biz/console/" target="_blank" rel="noopener noreferrer">LINE Developers Console</a>にログイン</li>
+                            <li>「新規プロバイダー作成」（初回のみ）</li>
+                            <li>「新規チャンネル作成」→「Messaging API」を選択</li>
+                            <li>チャンネル情報を入力して作成</li>
+                            <li>「Messaging API設定」タブで「チャンネルアクセストークン（長期）」を発行</li>
+                            <li>ボットをLINEで友達追加</li>
+                            <li>「チャンネル基本設定」で「あなたのユーザーID」を確認</li>
                         </ol>
 
                         <h4>📢 通知タイミング</h4>
@@ -475,20 +475,31 @@ export const Settings: React.FC<SettingsProps> = ({
                             <li><strong>前日 21:00</strong> - 翌日が休日の場合、タスク一覧を通知</li>
                             <li><strong>タスク開始30分前</strong> - 各タスクの開始直前に通知</li>
                         </ul>
-                        <p className="note">⚠️ 通知はこのアプリをブラウザで開いている間のみ動作します</p>
+                        <p className="note">💡 ユーザーIDは「U」で始まる33文字の文字列です</p>
                     </div>
                 )}
 
                 <div className="form-group">
-                    <label>Webhook URL</label>
+                    <label>チャンネルアクセストークン</label>
                     <input
-                        type="text"
-                        value={localSettings.discordWebhookUrl}
-                        onChange={(e) => setLocalSettings({ ...localSettings, discordWebhookUrl: e.target.value })}
-                        placeholder="https://discord.com/api/webhooks/..."
+                        type="password"
+                        value={localSettings.lineChannelAccessToken}
+                        onChange={(e) => setLocalSettings({ ...localSettings, lineChannelAccessToken: e.target.value })}
+                        placeholder="xxxxxxxxxx..."
+                        style={{ fontFamily: 'monospace' }}
                     />
                 </div>
-                <button onClick={handleWebhookTest} className="btn-secondary">🔔 通知テスト</button>
+                <div className="form-group" style={{ marginTop: '0.5rem' }}>
+                    <label>ユーザーID</label>
+                    <input
+                        type="text"
+                        value={localSettings.lineUserId}
+                        onChange={(e) => setLocalSettings({ ...localSettings, lineUserId: e.target.value })}
+                        placeholder="Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                        style={{ fontFamily: 'monospace' }}
+                    />
+                </div>
+                <button onClick={handleLineNotificationTest} className="btn-secondary" style={{ marginTop: '0.5rem' }}>🔔 通知テスト</button>
                 {webhookTestStatus && <p className="status-msg">{webhookTestStatus}</p>}
 
                 <div className="checkbox-group">

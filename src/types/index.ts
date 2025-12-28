@@ -84,7 +84,8 @@ export interface WorkEvent {
 }
 
 export interface AppSettings {
-    discordWebhookUrl: string;
+    lineChannelAccessToken: string;
+    lineUserId: string;
     notifyOnDayBefore: boolean;
     notifyDayBeforeTime: string; // "21:00"
     notifyBeforeTask: boolean;
@@ -97,7 +98,8 @@ export interface AppSettings {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
-    discordWebhookUrl: '',
+    lineChannelAccessToken: '',
+    lineUserId: '',
     notifyOnDayBefore: true,
     notifyDayBeforeTime: '21:00',
     notifyBeforeTask: true,

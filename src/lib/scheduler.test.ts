@@ -69,7 +69,8 @@ const createMockScheduledTask = (
 });
 
 const defaultSettings: AppSettings = {
-    discordWebhookUrl: '',
+    lineChannelAccessToken: '',
+    lineUserId: '',
     notifyOnDayBefore: true,
     notifyDayBeforeTime: '21:00',
     notifyBeforeTask: true,
