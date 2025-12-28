@@ -5,8 +5,8 @@ import type { AppSettings } from '../types';
 
 // Mock types
 const mockSettings: AppSettings = {
-    lineChannelAccessToken: 'test-channel-access-token',
     lineUserId: 'U1234567890123456789012345678901',
+    discordWebhookUrl: '',
     notifyOnDayBefore: false,
     notifyDayBeforeTime: '21:00',
     notifyBeforeTask: false,
