@@ -1,10 +1,11 @@
-import React, { useState, type ChangeEvent } from 'react';
+import React, { useState, useEffect, useCallback, type ChangeEvent } from 'react';
 import type { AppSettings, WorkEvent, TaskList as TaskListType } from '../types';
 import { DEFAULT_LIST_COLORS } from '../types';
 import { IcsParser } from '../lib/icsParser';
 import { GoogleCalendarClient } from '../lib/googleCalendar';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme, type Theme } from '../hooks/useTheme';
+import { supabase } from '../lib/supabase';
 
 interface SettingsProps {
     settings: AppSettings;
@@ -44,6 +45,133 @@ export const Settings: React.FC<SettingsProps> = ({
     const [isGoogleSyncing, setIsGoogleSyncing] = useState(false);
     // テーマ設定
     const { theme, setTheme } = useTheme();
+
+    // LINE連携用のstate
+    const [linkToken, setLinkToken] = useState<string | null>(null);
+    const [linkTokenExpiresAt, setLinkTokenExpiresAt] = useState<Date | null>(null);
+    const [isGeneratingToken, setIsGeneratingToken] = useState(false);
+    const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
+
+    /**
+     * LINE連携状態を確認（ポーリング）
+     */
+    const checkLinkStatus = useCallback(async () => {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const response = await fetch(
+                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-line-token`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`,
+                        'Content-Type': 'application/json',
+                    },
+                }
+            );
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.linked && data.lineUserId) {
+                    // 連携完了！設定を更新
+                    setLocalSettings(prev => ({ ...prev, lineUserId: data.lineUserId }));
+                    onUpdateSettings({ ...localSettings, lineUserId: data.lineUserId });
+                    setLinkToken(null);
+                    setLinkTokenExpiresAt(null);
+                } else if (data.hasActiveToken && data.token) {
+                    setLinkToken(data.token);
+                    setLinkTokenExpiresAt(new Date(data.expiresAt));
+                }
+            }
+        } catch (error) {
+            console.error('LINE連携状態確認エラー:', error);
+        }
+    }, [localSettings, onUpdateSettings]);
+
+    /**
+     * リンクトークンを生成
+     */
+    const generateLinkToken = async () => {
+        setIsGeneratingToken(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                alert('ログインが必要です');
+                return;
+            }
+
+            const response = await fetch(
+                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-line-token`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`,
+                        'Content-Type': 'application/json',
+                    },
+                }
+            );
+
+            if (response.ok) {
+                const data = await response.json();
+                setLinkToken(data.token);
+                setLinkTokenExpiresAt(new Date(data.expiresAt));
+            } else {
+                const error = await response.json();
+                alert(error.error || 'トークン生成に失敗しました');
+            }
+        } catch (error) {
+            console.error('トークン生成エラー:', error);
+            alert('トークン生成に失敗しました');
+        } finally {
+            setIsGeneratingToken(false);
+        }
+    };
+
+    /**
+     * LINE連携を解除
+     */
+    const unlinkLine = () => {
+        if (window.confirm('LINE連携を解除しますか？')) {
+            setLocalSettings(prev => ({ ...prev, lineUserId: '' }));
+            onUpdateSettings({ ...localSettings, lineUserId: '' });
+            setSaveStatus('✅ LINE連携を解除しました');
+            setTimeout(() => setSaveStatus(''), 3000);
+        }
+    };
+
+    // ポーリング：トークン発行中は5秒ごとに連携状態を確認
+    useEffect(() => {
+        if (!linkToken || localSettings.lineUserId) return;
+
+        const interval = setInterval(() => {
+            checkLinkStatus();
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, [linkToken, localSettings.lineUserId, checkLinkStatus]);
+
+    // カウントダウン：トークンの残り有効時間を表示
+    useEffect(() => {
+        if (!linkTokenExpiresAt) {
+            setRemainingSeconds(0);
+            return;
+        }
+
+        const updateRemaining = () => {
+            const remaining = Math.max(0, Math.floor((linkTokenExpiresAt.getTime() - Date.now()) / 1000));
+            setRemainingSeconds(remaining);
+            if (remaining === 0) {
+                setLinkToken(null);
+                setLinkTokenExpiresAt(null);
+            }
+        };
+
+        updateRemaining();
+        const interval = setInterval(updateRemaining, 1000);
+
+        return () => clearInterval(interval);
+    }, [linkTokenExpiresAt]);
 
     /**
      * Googleカレンダーからイベントを同期
@@ -462,42 +590,139 @@ export const Settings: React.FC<SettingsProps> = ({
                         border: '1px solid var(--border-color)',
                         marginBottom: '1rem'
                     }}>
-                        {/* QRコード画像 - 静的アセットとして配置 */}
-                        <img
-                            src="/line-qr.png"
-                            alt="LINE友達追加QRコード"
-                            style={{
-                                width: '150px',
-                                height: '150px',
-                                borderRadius: '8px',
-                                border: '1px solid var(--border-color)'
-                            }}
-                            onError={(e) => {
-                                // QRコード画像がない場合はプレースホルダーを表示
-                                (e.target as HTMLImageElement).style.display = 'none';
-                            }}
-                        />
-                        <p style={{ margin: 0, textAlign: 'center', fontSize: '0.9rem' }}>
-                            👆 QRコードを読み取って友達追加してください
-                        </p>
+                        {/* 連携済みの場合 */}
+                        {localSettings.lineUserId ? (
+                            <>
+                                <div style={{
+                                    padding: '0.75rem 1.5rem',
+                                    borderRadius: '20px',
+                                    background: 'rgba(76, 175, 80, 0.1)',
+                                    border: '1px solid #4caf50',
+                                    color: '#4caf50',
+                                    fontWeight: 'bold',
+                                    fontSize: '0.9rem'
+                                }}>
+                                    ✅ LINE連携済み
+                                </div>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                                    通知がLINEに届きます
+                                </p>
+                                <button
+                                    onClick={unlinkLine}
+                                    className="btn-secondary"
+                                    style={{ fontSize: '0.85rem', padding: '0.4rem 0.8rem' }}
+                                >
+                                    🔗 連携を解除
+                                </button>
+                            </>
+                        ) : linkToken ? (
+                            /* トークン発行中の場合 */
+                            <>
+                                <p style={{ margin: 0, textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                                    📱 LINE公式アカウントを友達追加して、<br />
+                                    以下のコードをメッセージで送信してください
+                                </p>
 
-                        {/* 連携ステータス */}
-                        <div style={{
-                            padding: '0.5rem 1rem',
-                            borderRadius: '20px',
-                            background: localSettings.lineUserId
-                                ? 'rgba(76, 175, 80, 0.1)'
-                                : 'rgba(255, 152, 0, 0.1)',
-                            border: `1px solid ${localSettings.lineUserId ? '#4caf50' : '#ff9800'}`,
-                            color: localSettings.lineUserId ? '#4caf50' : '#ff9800',
-                            fontWeight: 'bold',
-                            fontSize: '0.85rem'
-                        }}>
-                            {localSettings.lineUserId ? '✅ LINE連携済み' : '⚠️ 未連携（友達追加してください）'}
-                        </div>
+                                {/* QRコード画像 */}
+                                <img
+                                    src="/line-qr.png"
+                                    alt="LINE友達追加QRコード"
+                                    style={{
+                                        width: '120px',
+                                        height: '120px',
+                                        borderRadius: '8px',
+                                        border: '1px solid var(--border-color)'
+                                    }}
+                                    onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                    }}
+                                />
+
+                                {/* トークン表示 */}
+                                <div
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(linkToken);
+                                        setSaveStatus('📋 コードをコピーしました');
+                                        setTimeout(() => setSaveStatus(''), 2000);
+                                    }}
+                                    style={{
+                                        padding: '1rem 2rem',
+                                        background: 'var(--bg-tertiary)',
+                                        borderRadius: '12px',
+                                        border: '2px dashed var(--primary-color)',
+                                        cursor: 'pointer',
+                                        textAlign: 'center'
+                                    }}
+                                >
+                                    <div style={{
+                                        fontFamily: 'monospace',
+                                        fontSize: '2rem',
+                                        fontWeight: 'bold',
+                                        letterSpacing: '0.3em',
+                                        color: 'var(--primary-color)'
+                                    }}>
+                                        {linkToken}
+                                    </div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                                        👆 タップしてコピー
+                                    </div>
+                                </div>
+
+                                {/* カウントダウン */}
+                                <div style={{
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: '20px',
+                                    background: remainingSeconds < 60 ? 'rgba(255, 152, 0, 0.1)' : 'rgba(33, 150, 243, 0.1)',
+                                    border: `1px solid ${remainingSeconds < 60 ? '#ff9800' : '#2196f3'}`,
+                                    color: remainingSeconds < 60 ? '#ff9800' : '#2196f3',
+                                    fontSize: '0.85rem'
+                                }}>
+                                    ⏱️ 有効期限: {Math.floor(remainingSeconds / 60)}分{remainingSeconds % 60}秒
+                                </div>
+
+                                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                                    🔄 連携が完了すると自動的に画面が更新されます
+                                </p>
+
+                                <button
+                                    onClick={generateLinkToken}
+                                    className="btn-secondary"
+                                    disabled={isGeneratingToken}
+                                    style={{ fontSize: '0.85rem', padding: '0.4rem 0.8rem' }}
+                                >
+                                    🔄 コードを再発行
+                                </button>
+                            </>
+                        ) : (
+                            /* 未連携の場合 */
+                            <>
+                                <div style={{
+                                    padding: '0.75rem 1.5rem',
+                                    borderRadius: '20px',
+                                    background: 'rgba(255, 152, 0, 0.1)',
+                                    border: '1px solid #ff9800',
+                                    color: '#ff9800',
+                                    fontWeight: 'bold',
+                                    fontSize: '0.9rem'
+                                }}>
+                                    ⚠️ LINE未連携
+                                </div>
+                                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                                    LINE連携すると通知を受け取れます
+                                </p>
+                                <button
+                                    onClick={generateLinkToken}
+                                    className="btn-primary"
+                                    disabled={isGeneratingToken}
+                                    style={{ padding: '0.8rem 1.5rem', fontSize: '1rem' }}
+                                >
+                                    {isGeneratingToken ? '⏳ 発行中...' : '📱 LINE連携を開始'}
+                                </button>
+                            </>
+                        )}
 
                         {/* フォールバック説明 */}
-                        <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                        <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
                             💡 LINE APIの月間送信上限（200通）に達した場合、<br />
                             Discord Webhook URLが設定されていれば自動的にDiscordへ通知します
                         </p>
