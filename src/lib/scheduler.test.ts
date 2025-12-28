@@ -69,6 +69,7 @@ const createMockScheduledTask = (
 });
 
 const defaultSettings: AppSettings = {
+    notificationMethod: 'line',
     lineUserId: '',
     discordWebhookUrl: '',
     notifyOnDayBefore: true,

@@ -82,10 +82,12 @@ export interface WorkEvent {
     end: Date;
     eventType: EventType;
 }
+export type NotificationMethod = 'line' | 'discord';
 
 export interface AppSettings {
+    notificationMethod: NotificationMethod; // 通知方法の選択
     lineUserId: string;
-    discordWebhookUrl: string; // フォールバック用
+    discordWebhookUrl: string;
     notifyOnDayBefore: boolean;
     notifyDayBeforeTime: string; // "21:00"
     notifyBeforeTask: boolean;
@@ -98,6 +100,7 @@ export interface AppSettings {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
+    notificationMethod: 'line',
     lineUserId: '',
     discordWebhookUrl: '',
     notifyOnDayBefore: true,

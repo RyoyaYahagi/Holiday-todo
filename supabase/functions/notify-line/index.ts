@@ -17,6 +17,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 interface SettingsRow {
     user_id: string
+    notification_method: string
     line_user_id: string
     discord_webhook_url: string
     notify_on_day_before: boolean
@@ -157,14 +158,27 @@ async function sendDiscordNotification(
 }
 
 /**
- * 通知送信（LINE優先、失敗時はDiscordへフォールバック）
+ * 通知送信（ユーザーの設定に基づいて送信先を決定）
  */
 async function sendNotification(
+    notificationMethod: string,
     lineUserId: string,
     discordWebhookUrl: string,
     content: string
 ): Promise<{ success: boolean; channel: 'line' | 'discord' | 'none' }> {
-    // LINE送信を試行
+    // ユーザーが選択した通知方法に基づいて送信
+    if (notificationMethod === 'discord') {
+        // Discordが選択されている場合
+        if (discordWebhookUrl) {
+            const discordSent = await sendDiscordNotification(discordWebhookUrl, content)
+            if (discordSent) {
+                return { success: true, channel: 'discord' }
+            }
+        }
+        return { success: false, channel: 'none' }
+    }
+
+    // LINEが選択されている場合（デフォルト）
     if (lineUserId) {
         const lineSent = await sendLineNotification(lineUserId, content)
         if (lineSent) {
@@ -172,7 +186,7 @@ async function sendNotification(
         }
     }
 
-    // Discordへフォールバック
+    // LINEが失敗した場合、Discordにフォールバック
     if (discordWebhookUrl) {
         const discordSent = await sendDiscordNotification(discordWebhookUrl, content)
         if (discordSent) {
@@ -240,7 +254,7 @@ Deno.serve(async (req) => {
     // 全ユーザーの設定を取得
     const { data: allSettings, error: settingsError } = await supabase
         .from('settings')
-        .select('user_id, line_user_id, discord_webhook_url, notify_on_day_before, notify_day_before_time, notify_before_task, notify_before_task_minutes')
+        .select('user_id, notification_method, line_user_id, discord_webhook_url, notify_on_day_before, notify_day_before_time, notify_before_task, notify_before_task_minutes')
 
     if (settingsError) {
         console.error('設定取得エラー:', settingsError)
@@ -295,6 +309,7 @@ Deno.serve(async (req) => {
                     }).join('\n')
 
                     const result = await sendNotification(
+                        settings.notification_method ?? 'line',
                         settings.line_user_id,
                         settings.discord_webhook_url,
                         `📅 明日の休日スケジュール\n${taskLines}`
@@ -344,6 +359,7 @@ Deno.serve(async (req) => {
                         const taskDisplayM = taskTime.getUTCMinutes()
 
                         const result = await sendNotification(
+                            settings.notification_method ?? 'line',
                             settings.line_user_id,
                             settings.discord_webhook_url,
                             `⏰ タスク開始 ${settings.notify_before_task_minutes}分前\n・${taskDisplayH.toString().padStart(2, '0')}:${taskDisplayM.toString().padStart(2, '0')} - ${task.title}`

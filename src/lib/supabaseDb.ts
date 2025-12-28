@@ -49,6 +49,7 @@ interface EventRow {
 
 interface SettingsRow {
     user_id: string;
+    notification_method: string;
     line_user_id: string;
     discord_webhook_url: string;
     notify_on_day_before: boolean;
@@ -117,6 +118,7 @@ function rowToEvent(row: EventRow): WorkEvent {
 
 function rowToSettings(row: SettingsRow): AppSettings {
     return {
+        notificationMethod: (row.notification_method as 'line' | 'discord') ?? 'line',
         lineUserId: row.line_user_id ?? '',
         discordWebhookUrl: row.discord_webhook_url ?? '',
         notifyOnDayBefore: row.notify_on_day_before ?? true,
@@ -159,7 +161,7 @@ export const supabaseDb = {
 
         const { data, error } = await supabase
             .from('settings')
-            .select('user_id, line_user_id, discord_webhook_url, notify_on_day_before, notify_day_before_time, notify_before_task, notify_before_task_minutes, max_priority, schedule_interval, start_time_morning, start_time_afternoon, max_tasks_per_day')
+            .select('user_id, notification_method, line_user_id, discord_webhook_url, notify_on_day_before, notify_day_before_time, notify_before_task, notify_before_task_minutes, max_priority, schedule_interval, start_time_morning, start_time_afternoon, max_tasks_per_day')
             .eq('user_id', user.id)
             .single();
 
@@ -184,6 +186,7 @@ export const supabaseDb = {
             .from('settings')
             .upsert({
                 user_id: user.id,
+                notification_method: settings.notificationMethod,
                 line_user_id: settings.lineUserId,
                 discord_webhook_url: settings.discordWebhookUrl,
                 notify_on_day_before: settings.notifyOnDayBefore,

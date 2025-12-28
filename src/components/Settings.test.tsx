@@ -5,6 +5,7 @@ import type { AppSettings } from '../types';
 
 // Mock types
 const mockSettings: AppSettings = {
+    notificationMethod: 'line',
     lineUserId: 'U1234567890123456789012345678901',
     discordWebhookUrl: '',
     notifyOnDayBefore: false,

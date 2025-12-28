@@ -39,7 +39,6 @@ export const Settings: React.FC<SettingsProps> = ({
     const [importStatus, setImportStatus] = useState<string>('');
     const [saveStatus, setSaveStatus] = useState<string>('');
     const [showIcsHelp, setShowIcsHelp] = useState(false);
-    const [showDiscordHelp, setShowDiscordHelp] = useState(false);
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [googleSyncStatus, setGoogleSyncStatus] = useState<string>('');
     const [isGoogleSyncing, setIsGoogleSyncing] = useState(false);
@@ -416,59 +415,105 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
             </section>
 
-            {/* LINE通知セクション */}
+            {/* 通知設定セクション */}
             <section className="settings-section">
-                <h3>💬 LINE 通知設定</h3>
+                <h3>💬 通知設定</h3>
                 <p className="description">
-                    休日の前日夜やタスク開始前に、LINEへ通知を送信します。
+                    休日の前日夜やタスク開始前に、通知を送信します。
                 </p>
 
-                {/* LINE友達追加 */}
-                <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '1rem',
-                    padding: '1.5rem',
-                    background: 'var(--card-bg)',
-                    borderRadius: '12px',
-                    border: '1px solid var(--border-color)',
-                    marginBottom: '1rem'
-                }}>
-                    {/* QRコード画像 - 静的アセットとして配置 */}
-                    <img
-                        src="/line-qr.png"
-                        alt="LINE友達追加QRコード"
-                        style={{
-                            width: '150px',
-                            height: '150px',
-                            borderRadius: '8px',
-                            border: '1px solid var(--border-color)'
-                        }}
-                        onError={(e) => {
-                            // QRコード画像がない場合はプレースホルダーを表示
-                            (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                    />
-                    <p style={{ margin: 0, textAlign: 'center', fontSize: '0.9rem' }}>
-                        👆 QRコードを読み取って友達追加してください
-                    </p>
-
-                    {/* 連携ステータス */}
-                    <div style={{
-                        padding: '0.5rem 1rem',
-                        borderRadius: '20px',
-                        background: localSettings.lineUserId
-                            ? 'rgba(76, 175, 80, 0.1)'
-                            : 'rgba(255, 152, 0, 0.1)',
-                        border: `1px solid ${localSettings.lineUserId ? '#4caf50' : '#ff9800'}`,
-                        color: localSettings.lineUserId ? '#4caf50' : '#ff9800',
-                        fontWeight: 'bold',
-                        fontSize: '0.85rem'
-                    }}>
-                        {localSettings.lineUserId ? '✅ LINE連携済み' : '⚠️ 未連携（友達追加してください）'}
+                {/* 通知方法選択 */}
+                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'block' }}>通知方法</label>
+                    <div style={{ display: 'flex', gap: '1.5rem' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                            <input
+                                type="radio"
+                                name="notificationMethod"
+                                value="line"
+                                checked={localSettings.notificationMethod === 'line'}
+                                onChange={() => setLocalSettings({ ...localSettings, notificationMethod: 'line' })}
+                            />
+                            <span>📱 LINE</span>
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                            <input
+                                type="radio"
+                                name="notificationMethod"
+                                value="discord"
+                                checked={localSettings.notificationMethod === 'discord'}
+                                onChange={() => setLocalSettings({ ...localSettings, notificationMethod: 'discord' })}
+                            />
+                            <span>💬 Discord</span>
+                        </label>
                     </div>
                 </div>
+
+                {/* LINE設定（LINEが選択されている場合のみ表示） */}
+                {localSettings.notificationMethod === 'line' && (
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '1rem',
+                        padding: '1.5rem',
+                        background: 'var(--card-bg)',
+                        borderRadius: '12px',
+                        border: '1px solid var(--border-color)',
+                        marginBottom: '1rem'
+                    }}>
+                        {/* QRコード画像 - 静的アセットとして配置 */}
+                        <img
+                            src="/line-qr.png"
+                            alt="LINE友達追加QRコード"
+                            style={{
+                                width: '150px',
+                                height: '150px',
+                                borderRadius: '8px',
+                                border: '1px solid var(--border-color)'
+                            }}
+                            onError={(e) => {
+                                // QRコード画像がない場合はプレースホルダーを表示
+                                (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                        />
+                        <p style={{ margin: 0, textAlign: 'center', fontSize: '0.9rem' }}>
+                            👆 QRコードを読み取って友達追加してください
+                        </p>
+
+                        {/* 連携ステータス */}
+                        <div style={{
+                            padding: '0.5rem 1rem',
+                            borderRadius: '20px',
+                            background: localSettings.lineUserId
+                                ? 'rgba(76, 175, 80, 0.1)'
+                                : 'rgba(255, 152, 0, 0.1)',
+                            border: `1px solid ${localSettings.lineUserId ? '#4caf50' : '#ff9800'}`,
+                            color: localSettings.lineUserId ? '#4caf50' : '#ff9800',
+                            fontWeight: 'bold',
+                            fontSize: '0.85rem'
+                        }}>
+                            {localSettings.lineUserId ? '✅ LINE連携済み' : '⚠️ 未連携（友達追加してください）'}
+                        </div>
+                    </div>
+                )}
+
+                {/* Discord設定（Discordが選択されている場合のみ表示） */}
+                {localSettings.notificationMethod === 'discord' && (
+                    <div className="form-group" style={{ marginBottom: '1rem' }}>
+                        <label>Discord Webhook URL</label>
+                        <input
+                            type="text"
+                            value={localSettings.discordWebhookUrl}
+                            onChange={(e) => setLocalSettings({ ...localSettings, discordWebhookUrl: e.target.value })}
+                            placeholder="https://discord.com/api/webhooks/..."
+                            style={{ fontFamily: 'monospace' }}
+                        />
+                        <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                            Discord Webhookの作成方法は「サーバー設定 → 連携サービス → ウェブフック」から
+                        </p>
+                    </div>
+                )}
 
                 {/* 通知タイミング設定 */}
                 <div className="checkbox-group">
@@ -513,34 +558,6 @@ export const Settings: React.FC<SettingsProps> = ({
                         </select>
                         <span>に通知</span>
                     </label>
-                </div>
-
-                {/* Discordバックアップ設定（折りたたみ） */}
-                <div style={{ marginTop: '1.5rem' }}>
-                    <button
-                        className="btn-help"
-                        onClick={() => setShowDiscordHelp(!showDiscordHelp)}
-                    >
-                        {showDiscordHelp ? '▲ Discordバックアップを閉じる' : '▼ Discordバックアップ（任意）'}
-                    </button>
-
-                    {showDiscordHelp && (
-                        <div className="help-box" style={{ marginTop: '0.5rem' }}>
-                            <p style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                LINE APIの月間送信上限（200通）に達した場合、Discordへ通知を送信します。
-                            </p>
-                            <div className="form-group">
-                                <label>Discord Webhook URL</label>
-                                <input
-                                    type="text"
-                                    value={localSettings.discordWebhookUrl}
-                                    onChange={(e) => setLocalSettings({ ...localSettings, discordWebhookUrl: e.target.value })}
-                                    placeholder="https://discord.com/api/webhooks/..."
-                                    style={{ fontFamily: 'monospace' }}
-                                />
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 <div className="action-buttons" style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
