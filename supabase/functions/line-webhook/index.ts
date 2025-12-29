@@ -2,7 +2,6 @@
 // Supabase Edge Function (Deno runtime)
 // LINE Webhook受信用 - フォロー/アンフォロー/メッセージイベントを処理
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { createHmac } from 'https://deno.land/std@0.177.0/node/crypto.ts'
 
 /**
  * LINE Webhookイベント受信エンドポイント
@@ -44,13 +43,33 @@ interface LineWebhookBody {
 }
 
 /**
- * LINE署名を検証
+ * LINE署名を検証（Web Crypto API使用）
  */
-function verifySignature(body: string, signature: string, channelSecret: string): boolean {
-    const hmac = createHmac('sha256', channelSecret)
-    hmac.update(body)
-    const expectedSignature = hmac.digest('base64')
-    return signature === expectedSignature
+async function verifySignature(body: string, signature: string, channelSecret: string): Promise<boolean> {
+    try {
+        const encoder = new TextEncoder()
+        const keyData = encoder.encode(channelSecret)
+        const messageData = encoder.encode(body)
+
+        const key = await crypto.subtle.importKey(
+            'raw',
+            keyData,
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['sign']
+        )
+
+        const signatureBuffer = await crypto.subtle.sign('HMAC', key, messageData)
+        const signatureArray = new Uint8Array(signatureBuffer)
+        const expectedSignature = btoa(String.fromCharCode(...signatureArray))
+
+        console.log(`[line-webhook] 署名検証: expected=${expectedSignature.substring(0, 20)}..., received=${signature.substring(0, 20)}...`)
+
+        return signature === expectedSignature
+    } catch (error) {
+        console.error('[line-webhook] 署名検証エラー:', error)
+        return false
+    }
 }
 
 /**
@@ -208,6 +227,8 @@ async function handleUnfollow(
 }
 
 Deno.serve(async (req) => {
+    console.log('[line-webhook] リクエスト受信:', req.method)
+
     // OPTIONSリクエスト対応（CORS）
     if (req.method === 'OPTIONS') {
         return new Response(null, {
@@ -225,11 +246,14 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 })
     }
 
+    console.log('[line-webhook] POST処理開始')
+
     const channelSecret = Deno.env.get('LINE_CHANNEL_SECRET')
     if (!channelSecret) {
         console.error('[line-webhook] LINE_CHANNEL_SECRET が設定されていません')
         return new Response(JSON.stringify({ error: 'Server configuration error' }), { status: 500 })
     }
+    console.log(`[line-webhook] LINE_CHANNEL_SECRET 設定済み (長さ: ${channelSecret.length})`)
 
     // 署名取得
     const signature = req.headers.get('x-line-signature')
@@ -237,15 +261,19 @@ Deno.serve(async (req) => {
         console.error('[line-webhook] X-Line-Signature ヘッダーがありません')
         return new Response(JSON.stringify({ error: 'Missing signature' }), { status: 400 })
     }
+    console.log(`[line-webhook] 署名ヘッダー受信 (長さ: ${signature.length})`)
 
     // リクエストボディ取得
     const bodyText = await req.text()
+    console.log(`[line-webhook] ボディ受信 (長さ: ${bodyText.length}): ${bodyText.substring(0, 100)}...`)
 
     // 署名検証
-    if (!verifySignature(bodyText, signature, channelSecret)) {
-        console.error('[line-webhook] 署名検証失敗')
+    const isValid = await verifySignature(bodyText, signature, channelSecret)
+    if (!isValid) {
+        console.error('[line-webhook] 署名検証失敗 - channelSecret長さ:', channelSecret.length, 'body長さ:', bodyText.length)
         return new Response(JSON.stringify({ error: 'Invalid signature' }), { status: 401 })
     }
+    console.log('[line-webhook] 署名検証成功')
 
     // ボディをパース
     let body: LineWebhookBody
@@ -258,7 +286,16 @@ Deno.serve(async (req) => {
 
     console.log(`[line-webhook] イベント受信: ${body.events.length}件`)
 
-    // Supabaseクライアント初期化
+    // 検証リクエスト（eventsが空）の場合は即座に200を返す
+    if (body.events.length === 0) {
+        console.log('[line-webhook] 検証リクエスト - 即座に200を返却')
+        return new Response(JSON.stringify({ ok: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+        })
+    }
+
+    // Supabaseクライアント初期化（イベントがある場合のみ）
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
