@@ -150,7 +150,8 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 1rem;
-  padding-bottom: calc(4rem + var(--safe-area-bottom));
+  /* 底部ナビゲーションバーの高さ（3.5rem + safe-area + 1rem余白）に合わせる */
+  padding-bottom: calc(5rem + var(--safe-area-bottom));
 }
 
 /* Bottom Navigation */
@@ -162,13 +163,15 @@ body {
   right: 0;
   max-width: 600px;
   margin: 0 auto;
-  height: calc(3.5rem + var(--safe-area-bottom));
+  /* Xアプリ風の余白: ホームインジケーターの下に追加の余白を確保 */
+  height: calc(3.5rem + var(--safe-area-bottom) + 1rem);
   background: var(--card-bg);
   backdrop-filter: blur(10px);
   border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: space-around;
-  padding-bottom: var(--safe-area-bottom);
+  /* safe-area + 追加余白 */
+  padding-bottom: calc(var(--safe-area-bottom) + 1rem);
   z-index: 100;
 }
 
