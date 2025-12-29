@@ -360,6 +360,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                                 border: '1px solid var(--border-color)',
                                                 borderRadius: '4px',
                                                 background: 'var(--bg-secondary)',
+                                                color: 'var(--text-primary)',
                                                 cursor: taskLists.indexOf(list) === 0 ? 'not-allowed' : 'pointer',
                                                 opacity: taskLists.indexOf(list) === 0 ? 0.4 : 1
                                             }}
@@ -379,6 +380,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                                 border: '1px solid var(--border-color)',
                                                 borderRadius: '4px',
                                                 background: 'var(--bg-secondary)',
+                                                color: 'var(--text-primary)',
                                                 cursor: taskLists.indexOf(list) === taskLists.length - 1 ? 'not-allowed' : 'pointer',
                                                 opacity: taskLists.indexOf(list) === taskLists.length - 1 ? 0.4 : 1
                                             }}
