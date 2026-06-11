@@ -415,14 +415,8 @@ export function reschedulePendingTasks(
             return a.createdAt - b.createdAt;
         });
 
-    // 4. 削除すべき既存スケジュールID
-    //    未完了のもの全て（自動スケジュール分のみ削除）
-    const obsoleteScheduleIds = existingScheduledTasks
-        .filter(t => !t.isCompleted && t.scheduleType === 'priority')
-        .map(t => t.id);
-
-    // 5. スケジューリング実行
-    const newSchedules: ScheduledTask[] = [];
+    // 4. スケジューリング実行
+    const computedSchedules: ScheduledTask[] = [];
 
     // 保持するスケジュール（完了済み + 手動時間指定）をベースにする
     const currentAllocation = [...completedSchedules];
@@ -459,7 +453,7 @@ export function reschedulePendingTasks(
                 // スケジュール実行
                 const scheduled = scheduleTasksForHoliday(searchDate, chunk, events, settings, dayExisting);
 
-                newSchedules.push(...scheduled);
+                computedSchedules.push(...scheduled);
                 currentAllocation.push(...scheduled); // 割り当て済みリストに追加（次のループの判定用）
 
                 taskIndex += scheduled.length;
@@ -469,7 +463,52 @@ export function reschedulePendingTasks(
         daysSearched++;
     }
 
-    return { newSchedules, obsoleteScheduleIds };
+    // 5. 差分を計算して、追加・更新が必要なスケジュールと、削除すべきスケジュールIDを特定
+    const existingPrioritySchedules = existingScheduledTasks.filter(
+        t => !t.isCompleted && t.scheduleType === 'priority'
+    );
+
+    const existingByTaskId = new Map<string, ScheduledTask>();
+    for (const est of existingPrioritySchedules) {
+        existingByTaskId.set(est.taskId, est);
+    }
+
+    const finalNewSchedules: ScheduledTask[] = [];
+    const matchedExistingIds = new Set<string>();
+
+    for (const computed of computedSchedules) {
+        const existing = existingByTaskId.get(computed.taskId);
+        if (existing) {
+            matchedExistingIds.add(existing.id);
+            // 時間が変わっている場合は更新対象とする（同じIDを使用）
+            if (existing.scheduledTime !== computed.scheduledTime) {
+                finalNewSchedules.push({
+                    ...computed,
+                    id: existing.id,
+                    createdAt: existing.createdAt, // 作成日時を引き継ぐ
+                    notifiedAt: undefined // 時間が変わったため通知済み状態をリセット
+                });
+            } else {
+                // 同一スケジュールの場合は更新不要、ただしID等は引き継ぐ
+                computed.id = existing.id;
+                computed.createdAt = existing.createdAt;
+                computed.notifiedAt = existing.notifiedAt;
+            }
+        } else {
+            // 新規スケジュール
+            finalNewSchedules.push(computed);
+        }
+    }
+
+    // 新規スケジュール内に存在しない既存スケジュールは削除対象
+    const obsoleteScheduleIds = existingPrioritySchedules
+        .filter(est => !matchedExistingIds.has(est.id))
+        .map(est => est.id);
+
+    return {
+        newSchedules: finalNewSchedules,
+        obsoleteScheduleIds
+    };
 }
 
 /**

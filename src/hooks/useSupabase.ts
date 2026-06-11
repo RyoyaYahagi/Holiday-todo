@@ -89,9 +89,10 @@ export function useSupabase() {
                     toAdd: newSchedules.length
                 });
 
-                // 一貫性を保つため、未完了スケジュールを一度全て削除してから新しいスケジュールを保存する
-                // これにより、重複やゴミデータの残留を防ぐ
-                await supabaseDb.deletePendingScheduledTasks();
+                // 不要になったスケジュールのみ削除し、新規・変更分のみをupsertする
+                if (obsoleteScheduleIds.length > 0) {
+                    await supabaseDb.deleteScheduledTasks(obsoleteScheduleIds);
+                }
 
                 if (newSchedules.length > 0) {
                     await supabaseDb.saveScheduledTasks(newSchedules);

@@ -1,6 +1,7 @@
 // @ts-nocheck
 // Supabase Edge Function (Deno runtime)
 // deno-lint-ignore-file no-explicit-any
+// 【非推奨】この関数は非推奨になりました。LINE/Discord両対応の `notify-line` を使用してください。
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 /**
@@ -166,10 +167,12 @@ Deno.serve(async (req) => {
 
     console.log(`[notify-discord] 実行開始: UTC=${now.toISOString()}, JST時刻=${currentJSTTime}, JST今日=${todayJST}, JST明日=${tomorrowJST}`)
 
-    // 全ユーザーの設定を取得
+    // Discord Webhook URLが設定されているユーザーの設定のみを取得
     const { data: allSettings, error: settingsError } = await supabase
         .from('settings')
         .select('user_id, discord_webhook_url, notify_on_day_before, notify_day_before_time, notify_before_task, notify_before_task_minutes')
+        .neq('discord_webhook_url', '')
+        .not('discord_webhook_url', 'is', null)
 
     if (settingsError) {
         console.error('設定取得エラー:', settingsError)
