@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSupabaseQuery } from './hooks/useSupabaseQuery';
+import { useIndexedDB } from './hooks/useIndexedDB';
 import { useAuth } from './contexts/AuthContext';
 import { useNotifications } from './hooks/useNotifications';
 import { TaskList } from './components/TaskList';
@@ -16,8 +17,9 @@ import { getNextOccurrence } from './lib/scheduler';
 import { isSameDay, startOfDay } from 'date-fns';
 
 function App() {
-  const { user, loading: authLoading, signOut } = useAuth();
-
+  const { user, loading: authLoading, signOut, isLocalMode } = useAuth();
+  const supabaseStore = useSupabaseQuery();
+  const localStore = useIndexedDB();
   const {
     tasks,
     scheduledTasks,
@@ -35,7 +37,7 @@ function App() {
     addTaskList,
     updateTaskList,
     deleteTaskList
-  } = useSupabaseQuery();
+  } = isLocalMode ? localStore : supabaseStore;
 
   const [activeTab, setActiveTab] = useState<'tasks' | 'calendar' | 'settings'>('tasks');
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -261,7 +263,7 @@ function App() {
   }
 
   // 未ログイン時はログイン画面を表示
-  if (!user) {
+  if (!user && !isLocalMode) {
     return <Login />;
   }
 
@@ -275,10 +277,14 @@ function App() {
       <header className="app-header">
         <h1>Holiday Todo</h1>
         <div className="header-user">
-          <span className="user-email">{user.email}</span>
-          <button className="logout-btn" onClick={signOut} type="button">
-            ログアウト
-          </button>
+          <span className="user-email">{user?.email ?? 'ローカルユーザー'}</span>
+          {isLocalMode ? (
+            <span className="user-email">ローカル保存モード</span>
+          ) : (
+            <button className="logout-btn" onClick={signOut} type="button">
+              ログアウト
+            </button>
+          )}
         </div>
       </header>
 

@@ -18,6 +18,8 @@ interface AuthContextType {
     providerToken: string | null;
     /** ゲスト（匿名）ユーザーかどうか */
     isGuest: boolean;
+    /** Supabaseに接続できず、ローカル保存で動作しているかどうか */
+    isLocalMode: boolean;
     /** Googleアカウントでサインイン */
     signInWithGoogle: () => Promise<void>;
     /** ゲストとしてサインイン */
@@ -27,6 +29,21 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const AUTH_TIMEOUT_MS = 5000;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+    return new Promise((resolve, reject) => {
+        const timeoutId = window.setTimeout(() => {
+            reject(new Error('Supabase認証の確認がタイムアウトしました'));
+        }, timeoutMs);
+
+        promise
+            .then(resolve)
+            .catch(reject)
+            .finally(() => window.clearTimeout(timeoutId));
+    });
+}
 
 /**
  * 認証プロバイダーコンポーネント
@@ -41,18 +58,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [session, setSession] = useState<Session | null>(null);
     const [providerToken, setProviderToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isLocalMode, setIsLocalMode] = useState(false);
 
     // ゲストユーザーかどうかを判定
     const isGuest = user?.is_anonymous ?? false;
 
     useEffect(() => {
         // 初期セッション取得
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            setUser(session?.user ?? null);
-            setProviderToken(session?.provider_token ?? null);
-            setLoading(false);
-        });
+        withTimeout(supabase.auth.getSession(), AUTH_TIMEOUT_MS)
+            .then(({ data: { session } }) => {
+                setSession(session);
+                setUser(session?.user ?? null);
+                setProviderToken(session?.provider_token ?? null);
+                setIsLocalMode(false);
+            })
+            .catch((error) => {
+                console.error('Supabase認証の初期化に失敗しました。ローカル保存モードで起動します。', error);
+                setSession(null);
+                setUser(null);
+                setProviderToken(null);
+                setIsLocalMode(true);
+            })
+            .finally(() => setLoading(false));
 
         // 認証状態の変更を監視
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -60,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setSession(session);
                 setUser(session?.user ?? null);
                 setProviderToken(session?.provider_token ?? null);
+                setIsLocalMode(false);
             }
         );
 
@@ -74,6 +102,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
      * Google Calendar APIアクセス用のスコープも要求する。
      */
     const signInWithGoogle = async () => {
+        if (isLocalMode) {
+            throw new Error('Supabaseに接続できないため、Googleログインは現在利用できません');
+        }
+
         const redirectUrl = `${window.location.origin}/auth/callback`;
 
         console.log('OAuth redirect URL:', redirectUrl);
@@ -94,6 +126,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
      * ゲストデータはブラウザセッション終了まで保持される。
      */
     const signInAsGuest = async () => {
+        if (isLocalMode) {
+            throw new Error('Supabaseに接続できないため、ゲストログインは現在利用できません');
+        }
+
         const { error } = await supabase.auth.signInAnonymously();
         if (error) {
             console.error('ゲストログインエラー:', error);
@@ -107,11 +143,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
      * 現在のセッションを終了し、ユーザーをログアウト状態にする。
      */
     const signOut = async () => {
+        if (isLocalMode) {
+            return;
+        }
+
         await supabase.auth.signOut();
     };
 
     return (
-        <AuthContext.Provider value={{ user, session, loading, providerToken, isGuest, signInWithGoogle, signInAsGuest, signOut }}>
+        <AuthContext.Provider value={{ user, session, loading, providerToken, isGuest, isLocalMode, signInWithGoogle, signInAsGuest, signOut }}>
             {children}
         </AuthContext.Provider>
     );
