@@ -154,15 +154,33 @@ export function useSupabaseQuery() {
                         toAdd: newSchedules.length
                     });
 
-                    // 未完了スケジュールを一度全て削除してから新しいスケジュールを保存
-                    await supabaseDb.deletePendingScheduledTasks();
+                    // 未完了の不要スケジュールのみ削除し、変更・新規分のみをupsertする
+                    if (obsoleteScheduleIds.length > 0) {
+                        await supabaseDb.deleteScheduledTasks(obsoleteScheduleIds);
+                    }
 
                     if (newSchedules.length > 0) {
                         await supabaseDb.saveScheduledTasks(newSchedules);
                     }
 
-                    // スケジュールキャッシュを更新
-                    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.scheduledTasks });
+                    // 楽観的キャッシュ更新: DBから再取得せず、キャッシュに直接反映
+                    queryClient.setQueryData<ScheduledTask[]>(QUERY_KEYS.scheduledTasks, (old) => {
+                        const current = old || [];
+                        const obsoleteSet = new Set(obsoleteScheduleIds);
+                        let filtered = current.filter(item => !obsoleteSet.has(item.id));
+
+                        const newSchedulesMap = new Map(newSchedules.map(s => [s.id, s]));
+                        filtered = filtered.map(item => {
+                            if (newSchedulesMap.has(item.id)) {
+                                const updated = newSchedulesMap.get(item.id)!;
+                                newSchedulesMap.delete(item.id);
+                                return updated;
+                            }
+                            return item;
+                        });
+
+                        return [...filtered, ...Array.from(newSchedulesMap.values())];
+                    });
                 }
             } catch (error) {
                 console.error('Auto-schedule failed:', error);
@@ -456,10 +474,9 @@ export function useSupabaseQuery() {
                 queryClient.setQueryData(QUERY_KEYS.events, context.previousEvents);
             }
         },
-        onSuccess: async () => {
-            console.log('[saveEventsMutation] onSuccess: DBから再取得');
-            // DBはマージ方式なので、正しいデータを再取得する
-            await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.events });
+        onSuccess: () => {
+            console.log('[saveEventsMutation] onSuccess: 完了');
+            // キャッシュは optimistic update で設定された newEvents を正とするため、再取得は行わない
             // 自動スケジュールをバックグラウンドで実行
             runAutoScheduleBackground();
         },

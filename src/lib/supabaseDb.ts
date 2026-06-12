@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { DEFAULT_SETTINGS, type Task, type AppSettings, type WorkEvent, type ScheduledTask, type EventType, type TaskScheduleType, type RecurrenceRule, type TaskList } from '../types';
+import { computeEventDiff } from './eventDiff';
 
 /**
  * Supabaseのデータベース行型定義
@@ -259,47 +260,58 @@ export const supabaseDb = {
     },
 
     /**
-     * イベントを保存（完全置換方式）
+     * イベントを保存（差分更新方式）
      * 
-     * 重複問題を防ぐため、既存の通常イベントを全削除してから
-     * 新しいイベントを挿入する。カスタムイベントも同様に置換。
+     * クライアント操作時の大量書き込みを抑えるため、
+     * 既存イベントとの差分を取り、追加分だけinsert、不要分だけdeleteする。
      */
     async saveEvents(events: WorkEvent[]): Promise<void> {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('認証が必要です');
 
-        console.log('[supabaseDb.saveEvents] 開始 (完全置換方式):', events.length, '件');
+        console.log('[supabaseDb.saveEvents] 開始 (差分更新方式):', events.length, '件');
 
-        // 既存イベントを全削除
-        const { error: deleteError } = await supabase
+        // 既存イベントを取得
+        const { data: dbRows, error: fetchError } = await supabase
             .from('events')
-            .delete()
+            .select('id, title, start_time, end_time, event_type')
             .eq('user_id', user.id);
 
-        if (deleteError) {
-            console.error('[supabaseDb.saveEvents] 削除エラー:', deleteError);
-            throw deleteError;
+        if (fetchError) {
+            console.error('[supabaseDb.saveEvents] 既存イベント取得エラー:', fetchError);
+            throw fetchError;
         }
 
-        // 全イベントを挿入
-        if (events.length > 0) {
-            const { error } = await supabase
-                .from('events')
-                .insert(events.map(event => ({
-                    user_id: user.id,
-                    title: event.title,
-                    start_time: event.start.toISOString(),
-                    end_time: event.end.toISOString(),
-                    event_type: event.eventType
-                })));
+        const { toInsert, toDeleteIds } = computeEventDiff(dbRows || [], events, user.id);
 
-            if (error) {
-                console.error('[supabaseDb.saveEvents] 挿入エラー:', error);
-                throw error;
+        console.log(`[supabaseDb.saveEvents] 差分検出: 追加=${toInsert.length}件, 削除=${toDeleteIds.length}件`);
+
+        // 不要分を削除
+        if (toDeleteIds.length > 0) {
+            const { error: deleteError } = await supabase
+                .from('events')
+                .delete()
+                .in('id', toDeleteIds);
+
+            if (deleteError) {
+                console.error('[supabaseDb.saveEvents] 削除エラー:', deleteError);
+                throw deleteError;
             }
         }
 
-        console.log('[supabaseDb.saveEvents] 完了:', events.length, '件挿入');
+        // 追加分を挿入
+        if (toInsert.length > 0) {
+            const { error: insertError } = await supabase
+                .from('events')
+                .insert(toInsert);
+
+            if (insertError) {
+                console.error('[supabaseDb.saveEvents] 挿入エラー:', insertError);
+                throw insertError;
+            }
+        }
+
+        console.log('[supabaseDb.saveEvents] 完了');
     },
 
     /**

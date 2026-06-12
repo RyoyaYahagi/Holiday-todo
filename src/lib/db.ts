@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import { DEFAULT_SETTINGS, type Task, type AppSettings, type WorkEvent, type ScheduledTask } from '../types';
+import { DEFAULT_SETTINGS, type Task, type AppSettings, type WorkEvent, type ScheduledTask, type TaskList } from '../types';
 
 interface TodoDB extends DBSchema {
     tasks: {
@@ -23,10 +23,22 @@ interface TodoDB extends DBSchema {
         key: string; // 'app-settings'
         value: AppSettings;
     };
+    taskLists: {
+        key: string;
+        value: TaskList;
+    };
 }
 
 const DB_NAME = 'holiday-todo-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
+
+const DEFAULT_TASK_LIST: TaskList = {
+    id: 'default',
+    name: 'すべて',
+    color: '#6B7280',
+    isDefault: true,
+    createdAt: 0
+};
 
 export async function initDB(): Promise<IDBPDatabase<TodoDB>> {
     return openDB<TodoDB>(DB_NAME, DB_VERSION, {
@@ -45,8 +57,19 @@ export async function initDB(): Promise<IDBPDatabase<TodoDB>> {
             if (!db.objectStoreNames.contains('settings')) {
                 db.createObjectStore('settings');
             }
+            if (!db.objectStoreNames.contains('taskLists')) {
+                db.createObjectStore('taskLists', { keyPath: 'id' });
+            }
         },
     });
+}
+
+async function ensureDefaultTaskList(database: IDBPDatabase<TodoDB>): Promise<TaskList> {
+    const existing = await database.get('taskLists', DEFAULT_TASK_LIST.id);
+    if (existing) return existing;
+
+    await database.put('taskLists', DEFAULT_TASK_LIST);
+    return DEFAULT_TASK_LIST;
 }
 
 export const db = {
@@ -138,18 +161,73 @@ export const db = {
         await tx.done;
     },
 
+    async deleteScheduledTasks(ids: string[]): Promise<void> {
+        const db = await initDB();
+        const tx = db.transaction('scheduledTasks', 'readwrite');
+
+        for (const id of ids) {
+            await tx.store.delete(id);
+        }
+
+        await tx.done;
+    },
+
+    async getAllTaskLists(): Promise<TaskList[]> {
+        const db = await initDB();
+        await ensureDefaultTaskList(db);
+        const lists = await db.getAll('taskLists');
+        return lists.sort((a, b) => a.createdAt - b.createdAt);
+    },
+
+    async getOrCreateDefaultList(): Promise<TaskList> {
+        const db = await initDB();
+        return ensureDefaultTaskList(db);
+    },
+
+    async addTaskList(list: TaskList): Promise<void> {
+        const db = await initDB();
+        await db.put('taskLists', list);
+    },
+
+    async updateTaskList(list: TaskList): Promise<void> {
+        const db = await initDB();
+        await db.put('taskLists', list);
+    },
+
+    async deleteTaskList(id: string): Promise<void> {
+        const db = await initDB();
+        const list = await db.get('taskLists', id);
+
+        if (list?.isDefault) {
+            throw new Error('デフォルトリストは削除できません');
+        }
+
+        await db.delete('taskLists', id);
+
+        const tx = db.transaction('tasks', 'readwrite');
+        const tasks = await tx.store.getAll();
+        for (const task of tasks) {
+            if (task.listId === id) {
+                await tx.store.put({ ...task, listId: undefined });
+            }
+        }
+        await tx.done;
+    },
+
     async exportData(): Promise<string> {
         const db = await initDB();
         const tasks = await db.getAll('tasks');
         const scheduledTasks = await db.getAll('scheduledTasks');
         const events = await db.getAll('events');
         const settings = await db.get('settings', 'app-settings');
+        const taskLists = await db.getAll('taskLists');
 
         const data = {
             tasks,
             scheduledTasks,
             events,
             settings,
+            taskLists,
             exportDate: new Date().toISOString()
         };
         return JSON.stringify(data, null, 2);
@@ -159,7 +237,7 @@ export const db = {
         try {
             const data = JSON.parse(jsonString);
             const db = await initDB();
-            const tx = db.transaction(['tasks', 'scheduledTasks', 'events', 'settings'], 'readwrite');
+            const tx = db.transaction(['tasks', 'scheduledTasks', 'events', 'settings', 'taskLists'], 'readwrite');
 
             if (data.tasks) {
                 await tx.objectStore('tasks').clear();
@@ -183,6 +261,10 @@ export const db = {
             }
             if (data.settings) {
                 await tx.objectStore('settings').put(data.settings, 'app-settings');
+            }
+            if (data.taskLists) {
+                await tx.objectStore('taskLists').clear();
+                for (const list of data.taskLists) await tx.objectStore('taskLists').add(list);
             }
             await tx.done;
         } catch (e) {

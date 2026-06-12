@@ -57,8 +57,6 @@ function isHoliday(dateStr: string, events: EventRow[]): boolean {
         return eventDateStrJST === dateStr
     })
 
-    console.log(`[notify-line] isHoliday(${dateStr}): イベント数=${dayEvents.length}`)
-
     if (dayEvents.length === 0) {
         return true
     }
@@ -251,10 +249,12 @@ Deno.serve(async (req) => {
 
     console.log(`[notify-line] 実行開始: UTC=${now.toISOString()}, JST時刻=${currentJSTTime}`)
 
-    // 全ユーザーの設定を取得
+    // LINE User IDまたはDiscord Webhook URLが設定されているユーザーの設定のみを取得
     const { data: allSettings, error: settingsError } = await supabase
         .from('settings')
         .select('user_id, notification_method, line_user_id, discord_webhook_url, notify_on_day_before, notify_day_before_time, notify_before_task, notify_before_task_minutes')
+        .or('line_user_id.neq."",discord_webhook_url.neq.""')
+        .or('line_user_id.not.is.null,discord_webhook_url.not.is.null')
 
     if (settingsError) {
         console.error('設定取得エラー:', settingsError)
@@ -266,11 +266,8 @@ Deno.serve(async (req) => {
     const notifiedCount = { line: 0, discord: 0, failed: 0 }
 
     for (const settings of (allSettings as SettingsRow[]) || []) {
-        console.log(`[notify-line] ユーザー処理: ${settings.user_id}`)
-
         // LINE User IDもDiscord Webhook URLもない場合はスキップ
         if (!settings.line_user_id && !settings.discord_webhook_url) {
-            console.log('[notify-line] 通知設定なし、スキップ')
             continue
         }
 
@@ -278,19 +275,19 @@ Deno.serve(async (req) => {
 
         // 1) 前日通知のチェック
         if (settings.notify_on_day_before && settings.notify_day_before_time === currentJSTTime) {
-            console.log('[notify-line] 前日通知時刻一致！')
+            const tomorrowStartJST = new Date(`${tomorrowJST}T00:00:00+09:00`)
+            const tomorrowEndJST = new Date(`${tomorrowJST}T23:59:59+09:00`)
 
             const { data: events } = await supabase
                 .from('events')
                 .select('user_id, event_type, start_time')
                 .eq('user_id', userId)
+                .gte('start_time', tomorrowStartJST.toISOString())
+                .lte('start_time', tomorrowEndJST.toISOString())
 
             const isTomorrowHoliday = isHoliday(tomorrowJST, events as EventRow[] || [])
 
             if (isTomorrowHoliday) {
-                const tomorrowStartJST = new Date(`${tomorrowJST}T00:00:00+09:00`)
-                const tomorrowEndJST = new Date(`${tomorrowJST}T23:59:59+09:00`)
-
                 const { data: tasks } = await supabase
                     .from('scheduled_tasks')
                     .select('id, title, priority, scheduled_time, is_completed')
@@ -324,12 +321,19 @@ Deno.serve(async (req) => {
 
         // 2) タスク開始前通知のチェック
         if (settings.notify_before_task && settings.notify_before_task_minutes >= 0) {
-            const targetTime = new Date(now.getTime() + settings.notify_before_task_minutes * 60 * 1000)
-            const targetJSTH = (targetTime.getUTCHours() + 9) % 24
-            const targetJSTM = targetTime.getUTCMinutes()
-
-            const todayStartJST = new Date(`${todayJST}T00:00:00+09:00`)
-            const todayEndJST = new Date(`${todayJST}T23:59:59+09:00`)
+            // 現在の時刻から対象の1分間ウィンドウ(秒・ミリ秒切り捨て)を生成
+            const currentMinuteStart = new Date(
+                Date.UTC(
+                    now.getUTCFullYear(),
+                    now.getUTCMonth(),
+                    now.getUTCDate(),
+                    now.getUTCHours(),
+                    now.getUTCMinutes(),
+                    0, 0
+                )
+            )
+            const targetTimeStart = new Date(currentMinuteStart.getTime() + settings.notify_before_task_minutes * 60 * 1000)
+            const targetTimeEnd = new Date(targetTimeStart.getTime() + 60 * 1000)
 
             const { data: tasks } = await supabase
                 .from('scheduled_tasks')
@@ -337,38 +341,34 @@ Deno.serve(async (req) => {
                 .eq('user_id', userId)
                 .eq('is_completed', false)
                 .is('notified_at', null)
-                .gte('scheduled_time', todayStartJST.toISOString())
-                .lte('scheduled_time', todayEndJST.toISOString())
+                .gte('scheduled_time', targetTimeStart.toISOString())
+                .lt('scheduled_time', targetTimeEnd.toISOString())
 
             for (const task of (tasks as ScheduledTaskRow[]) || []) {
-                const taskTime = new Date(task.scheduled_time)
-                const taskJSTH = (taskTime.getUTCHours() + 9) % 24
-                const taskJSTM = taskTime.getUTCMinutes()
+                // 二重送信防止の更新
+                const { data: updatedTask, error: updateError } = await supabase
+                    .from('scheduled_tasks')
+                    .update({ notified_at: new Date().toISOString() })
+                    .eq('id', task.id)
+                    .is('notified_at', null)
+                    .select()
+                    .single()
 
-                if (taskJSTH === targetJSTH && taskJSTM === targetJSTM) {
-                    const { data: updatedTask, error: updateError } = await supabase
-                        .from('scheduled_tasks')
-                        .update({ notified_at: new Date().toISOString() })
-                        .eq('id', task.id)
-                        .is('notified_at', null)
-                        .select()
-                        .single()
+                if (updatedTask && !updateError) {
+                    const taskTime = new Date(task.scheduled_time)
+                    const taskDisplayH = (taskTime.getUTCHours() + 9) % 24
+                    const taskDisplayM = taskTime.getUTCMinutes()
 
-                    if (updatedTask && !updateError) {
-                        const taskDisplayH = (taskTime.getUTCHours() + 9) % 24
-                        const taskDisplayM = taskTime.getUTCMinutes()
+                    const result = await sendNotification(
+                        settings.notification_method ?? 'line',
+                        settings.line_user_id,
+                        settings.discord_webhook_url,
+                        `⏰ タスク開始 ${settings.notify_before_task_minutes}分前\n・${taskDisplayH.toString().padStart(2, '0')}:${taskDisplayM.toString().padStart(2, '0')} - ${task.title}`
+                    )
 
-                        const result = await sendNotification(
-                            settings.notification_method ?? 'line',
-                            settings.line_user_id,
-                            settings.discord_webhook_url,
-                            `⏰ タスク開始 ${settings.notify_before_task_minutes}分前\n・${taskDisplayH.toString().padStart(2, '0')}:${taskDisplayM.toString().padStart(2, '0')} - ${task.title}`
-                        )
-
-                        if (result.channel === 'line') notifiedCount.line++
-                        else if (result.channel === 'discord') notifiedCount.discord++
-                        else notifiedCount.failed++
-                    }
+                    if (result.channel === 'line') notifiedCount.line++
+                    else if (result.channel === 'discord') notifiedCount.discord++
+                    else notifiedCount.failed++
                 }
             }
         }

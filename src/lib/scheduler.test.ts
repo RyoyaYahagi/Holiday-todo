@@ -440,6 +440,67 @@ describe('reschedulePendingTasks - 自動スケジューリング', () => {
         // 休日がないのでスケジュールされない
         expect(result.newSchedules.length).toBe(0);
     });
+
+    it('同一スケジュールならDB差分なし（newSchedulesとobsoleteScheduleIdsが空）', () => {
+        const testToday = new Date('2024-01-15T00:00:00'); // 月曜日
+        const tasks: Task[] = [
+            createMockTask('task-1', 'タスク1', 'priority', 3),
+        ];
+
+        // デフォルト休日である土曜日（1月20日）の朝8時に設定
+        const scheduledTime = setHours(setMinutes(startOfDay(addDays(testToday, 5)), 0), defaultSettings.startTimeMorning).getTime();
+        const existingScheduledTasks: ScheduledTask[] = [
+            createMockScheduledTask('task-1', 'タスク1', scheduledTime, false, 'priority'),
+        ];
+
+        const events: WorkEvent[] = []; // 空配列＝土日のみ休日
+
+        const result = reschedulePendingTasks(tasks, existingScheduledTasks, events, defaultSettings, testToday);
+
+        expect(result.newSchedules).toEqual([]);
+        expect(result.obsoleteScheduleIds).toEqual([]);
+    });
+
+    it('スケジュール時間が変更された場合はnewSchedulesに入り、IDを引き継ぐこと', () => {
+        const testToday = new Date('2024-01-15T00:00:00');
+        const tasks: Task[] = [
+            createMockTask('task-1', 'タスク1', 'priority', 3),
+        ];
+
+        // 既存スケジュールは 10:00（時間変更前の想定）
+        const oldScheduledTime = setHours(setMinutes(startOfDay(addDays(testToday, 5)), 0), defaultSettings.startTimeMorning + defaultSettings.scheduleInterval).getTime();
+        const existingScheduledTasks: ScheduledTask[] = [
+            createMockScheduledTask('task-1', 'タスク1', oldScheduledTime, false, 'priority'),
+        ];
+
+        const events: WorkEvent[] = [];
+
+        const result = reschedulePendingTasks(tasks, existingScheduledTasks, events, defaultSettings, testToday);
+
+        expect(result.newSchedules.length).toBe(1);
+        expect(result.newSchedules[0].taskId).toBe('task-1');
+        expect(result.newSchedules[0].id).toBe('scheduled-task-1');
+        expect(result.newSchedules[0].scheduledTime).toBe(setHours(setMinutes(startOfDay(addDays(testToday, 5)), 0), defaultSettings.startTimeMorning).getTime());
+        expect(result.obsoleteScheduleIds).toEqual([]);
+    });
+
+    it('不要になったスケジュールはobsoleteScheduleIdsに入り削除されること', () => {
+        const testToday = new Date('2024-01-15T00:00:00');
+        const tasks: Task[] = [];
+
+        // 既存のスケジュール
+        const oldScheduledTime = setHours(setMinutes(startOfDay(addDays(testToday, 5)), 0), 8).getTime();
+        const existingScheduledTasks: ScheduledTask[] = [
+            createMockScheduledTask('task-1', 'タスク1', oldScheduledTime, false, 'priority'),
+        ];
+
+        const events: WorkEvent[] = [];
+
+        const result = reschedulePendingTasks(tasks, existingScheduledTasks, events, defaultSettings, testToday);
+
+        expect(result.newSchedules).toEqual([]);
+        expect(result.obsoleteScheduleIds).toEqual(['scheduled-task-1']);
+    });
 });
 
 // =========================================
