@@ -37,8 +37,16 @@ const DEFAULT_TASK_LIST: TaskList = {
     name: 'すべて',
     color: '#6B7280',
     isDefault: true,
-    createdAt: 0
+    createdAt: 0,
+    sortOrder: 0
 };
+
+function sortTaskLists(lists: TaskList[]): TaskList[] {
+    return lists.sort((a, b) =>
+        (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER) ||
+        a.createdAt - b.createdAt
+    );
+}
 
 export async function initDB(): Promise<IDBPDatabase<TodoDB>> {
     return openDB<TodoDB>(DB_NAME, DB_VERSION, {
@@ -176,7 +184,7 @@ export const db = {
         const db = await initDB();
         await ensureDefaultTaskList(db);
         const lists = await db.getAll('taskLists');
-        return lists.sort((a, b) => a.createdAt - b.createdAt);
+        return sortTaskLists(lists);
     },
 
     async getOrCreateDefaultList(): Promise<TaskList> {
@@ -256,6 +264,7 @@ export const db = {
                 for (const e of data.events) {
                     e.start = new Date(e.start);
                     e.end = new Date(e.end);
+                    e.id = e.id ?? crypto.randomUUID();
                     await tx.objectStore('events').add(e);
                 }
             }

@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabaseDb } from '../lib/supabaseDb';
 import { reschedulePendingTasks } from '../lib/scheduler';
 import { DEFAULT_SETTINGS, type Task, type WorkEvent, type ScheduledTask, type AppSettings, type TaskScheduleType, type Priority, type RecurrenceRule, type TaskList } from '../types';
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useEffect, useMemo } from 'react';
 
 /**
  * React Queryのキー定義
@@ -11,11 +11,13 @@ import { useRef, useCallback } from 'react';
  * キャッシュの識別と無効化に使用する。
  */
 const QUERY_KEYS = {
-    tasks: ['tasks'] as const,
-    scheduledTasks: ['scheduledTasks'] as const,
-    events: ['events'] as const,
-    settings: ['settings'] as const,
-    taskLists: ['taskLists'] as const,
+    all: ['supabase'] as const,
+    user: (userId: string) => ['supabase', userId] as const,
+    tasks: (userId: string) => ['supabase', userId, 'tasks'] as const,
+    scheduledTasks: (userId: string) => ['supabase', userId, 'scheduledTasks'] as const,
+    events: (userId: string) => ['supabase', userId, 'events'] as const,
+    settings: (userId: string) => ['supabase', userId, 'settings'] as const,
+    taskLists: (userId: string) => ['supabase', userId, 'taskLists'] as const,
 };
 
 /**
@@ -30,9 +32,23 @@ const QUERY_KEYS = {
 export function useSupabaseQuery() {
     const { user, loading: authLoading } = useAuth();
     const queryClient = useQueryClient();
+    const userId = user?.id ?? 'anonymous';
+    const queryKeys = useMemo(() => ({
+        tasks: QUERY_KEYS.tasks(userId),
+        scheduledTasks: QUERY_KEYS.scheduledTasks(userId),
+        events: QUERY_KEYS.events(userId),
+        settings: QUERY_KEYS.settings(userId),
+        taskLists: QUERY_KEYS.taskLists(userId),
+    }), [userId]);
 
     // 認証が完了するまでクエリを有効にしない
     const isAuthReady = !authLoading && !!user;
+
+    useEffect(() => {
+        if (!user) {
+            queryClient.removeQueries({ queryKey: QUERY_KEYS.all });
+        }
+    }, [queryClient, user]);
 
     // スケジューリング処理の重複実行を防ぐためのフラグ
     const isScheduling = useRef(false);
@@ -41,7 +57,7 @@ export function useSupabaseQuery() {
      * タスク取得クエリ
      */
     const tasksQuery = useQuery({
-        queryKey: QUERY_KEYS.tasks,
+        queryKey: queryKeys.tasks,
         queryFn: () => supabaseDb.getAllTasks(),
         enabled: isAuthReady,
         staleTime: 5 * 60 * 1000,
@@ -51,7 +67,7 @@ export function useSupabaseQuery() {
      * タスクリスト取得クエリ
      */
     const taskListsQuery = useQuery({
-        queryKey: QUERY_KEYS.taskLists,
+        queryKey: queryKeys.taskLists,
         queryFn: async () => {
             // デフォルトリストを確保してから全リスト取得
             await supabaseDb.getOrCreateDefaultList();
@@ -65,7 +81,7 @@ export function useSupabaseQuery() {
      * スケジュール済みタスク取得クエリ
      */
     const scheduledTasksQuery = useQuery({
-        queryKey: QUERY_KEYS.scheduledTasks,
+        queryKey: queryKeys.scheduledTasks,
         queryFn: () => supabaseDb.getScheduledTasks(),
         enabled: isAuthReady,
         staleTime: 5 * 60 * 1000,
@@ -76,7 +92,7 @@ export function useSupabaseQuery() {
      * 除外設定の変更時にキャッシュが上書きされないよう設定
      */
     const eventsQuery = useQuery({
-        queryKey: QUERY_KEYS.events,
+        queryKey: queryKeys.events,
         queryFn: () => supabaseDb.getAllEvents(),
         enabled: isAuthReady,
         staleTime: 5 * 60 * 1000,
@@ -88,7 +104,7 @@ export function useSupabaseQuery() {
      * 設定取得クエリ
      */
     const settingsQuery = useQuery({
-        queryKey: QUERY_KEYS.settings,
+        queryKey: queryKeys.settings,
         queryFn: () => supabaseDb.getSettings(),
         enabled: isAuthReady,
         staleTime: 5 * 60 * 1000,
@@ -108,13 +124,13 @@ export function useSupabaseQuery() {
      */
     const refreshData = useCallback(async () => {
         await Promise.all([
-            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tasks }),
-            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.scheduledTasks }),
-            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.events }),
-            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.settings }),
-            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.taskLists }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.tasks }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.scheduledTasks }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.events }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.settings }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.taskLists }),
         ]);
-    }, [queryClient]);
+    }, [queryClient, queryKeys]);
 
     /**
      * 自動スケジューリングを実行 (内部用・バックグラウンド)
@@ -133,10 +149,10 @@ export function useSupabaseQuery() {
         (async () => {
             try {
                 // キャッシュから最新のデータを取得
-                const currentTasks = queryClient.getQueryData<Task[]>(QUERY_KEYS.tasks) ?? [];
-                const currentScheduled = queryClient.getQueryData<ScheduledTask[]>(QUERY_KEYS.scheduledTasks) ?? [];
-                const currentEvents = queryClient.getQueryData<WorkEvent[]>(QUERY_KEYS.events) ?? [];
-                const currentSettings = queryClient.getQueryData<AppSettings>(QUERY_KEYS.settings) ?? DEFAULT_SETTINGS;
+                const currentTasks = queryClient.getQueryData<Task[]>(queryKeys.tasks) ?? [];
+                const currentScheduled = queryClient.getQueryData<ScheduledTask[]>(queryKeys.scheduledTasks) ?? [];
+                const currentEvents = queryClient.getQueryData<WorkEvent[]>(queryKeys.events) ?? [];
+                const currentSettings = queryClient.getQueryData<AppSettings>(queryKeys.settings) ?? DEFAULT_SETTINGS;
 
                 const today = new Date();
                 const { newSchedules, obsoleteScheduleIds } = reschedulePendingTasks(
@@ -164,7 +180,7 @@ export function useSupabaseQuery() {
                     }
 
                     // 楽観的キャッシュ更新: DBから再取得せず、キャッシュに直接反映
-                    queryClient.setQueryData<ScheduledTask[]>(QUERY_KEYS.scheduledTasks, (old) => {
+                    queryClient.setQueryData<ScheduledTask[]>(queryKeys.scheduledTasks, (old) => {
                         const current = old || [];
                         const obsoleteSet = new Set(obsoleteScheduleIds);
                         let filtered = current.filter(item => !obsoleteSet.has(item.id));
@@ -188,7 +204,7 @@ export function useSupabaseQuery() {
                 isScheduling.current = false;
             }
         })();
-    }, [queryClient]);
+    }, [queryClient, queryKeys]);
 
     /**
      * タスク追加ミューテーション
@@ -196,8 +212,9 @@ export function useSupabaseQuery() {
      * scheduleType === 'priority' の場合のみ自動スケジューリングを実行
      */
     const addTaskMutation = useMutation({
-        mutationFn: async ({ id, title, scheduleType, priority, manualScheduledTime, recurrence, createdAt, listId }: {
+        mutationFn: async ({ id, scheduledTaskId, title, scheduleType, priority, manualScheduledTime, recurrence, createdAt, listId }: {
             id: string;
+            scheduledTaskId?: string;
             title: string;
             scheduleType: TaskScheduleType;
             priority?: Priority;
@@ -222,7 +239,7 @@ export function useSupabaseQuery() {
             // (繰り返し設定がある場合は、繰り返しロジック側で処理が必要だが、一旦初回分として保存する)
             if ((scheduleType === 'time' || scheduleType === 'recurrence') && manualScheduledTime) {
                 const scheduledTask: ScheduledTask = {
-                    id: crypto.randomUUID(),
+                    id: scheduledTaskId ?? crypto.randomUUID(),
                     taskId: newTask.id,
                     title: newTask.title,
                     scheduledTime: manualScheduledTime,
@@ -240,14 +257,14 @@ export function useSupabaseQuery() {
 
             return newTask;
         },
-        onMutate: async ({ id, title, scheduleType, priority, manualScheduledTime, recurrence, createdAt, listId }) => {
+        onMutate: async ({ id, scheduledTaskId, title, scheduleType, priority, manualScheduledTime, recurrence, createdAt, listId }) => {
             // キャンセル中のクエリをキャンセル
-            await queryClient.cancelQueries({ queryKey: QUERY_KEYS.tasks });
-            await queryClient.cancelQueries({ queryKey: QUERY_KEYS.scheduledTasks });
+            await queryClient.cancelQueries({ queryKey: queryKeys.tasks });
+            await queryClient.cancelQueries({ queryKey: queryKeys.scheduledTasks });
 
             // 現在のキャッシュを保存（ロールバック用）
-            const previousTasks = queryClient.getQueryData<Task[]>(QUERY_KEYS.tasks);
-            const previousScheduledTasks = queryClient.getQueryData<ScheduledTask[]>(QUERY_KEYS.scheduledTasks);
+            const previousTasks = queryClient.getQueryData<Task[]>(queryKeys.tasks);
+            const previousScheduledTasks = queryClient.getQueryData<ScheduledTask[]>(queryKeys.scheduledTasks);
 
             // 楽観的更新: DB保存前にUIを更新（同じIDを使用）
             const optimisticTask: Task = {
@@ -260,14 +277,14 @@ export function useSupabaseQuery() {
                 recurrence,
                 listId
             };
-            queryClient.setQueryData<Task[]>(QUERY_KEYS.tasks, (old) =>
+            queryClient.setQueryData<Task[]>(queryKeys.tasks, (old) =>
                 old ? [...old, optimisticTask] : [optimisticTask]
             );
 
             // 日時指定タスクの場合、scheduledTasks にも楽観的追加
             if ((scheduleType === 'time' || scheduleType === 'recurrence') && manualScheduledTime) {
                 const optimisticScheduledTask: ScheduledTask = {
-                    id: crypto.randomUUID(), // 一時的なID（リロードまで有効）
+                    id: scheduledTaskId ?? crypto.randomUUID(),
                     taskId: id,
                     title,
                     scheduledTime: manualScheduledTime,
@@ -279,7 +296,7 @@ export function useSupabaseQuery() {
                     recurrence,
                     listId
                 };
-                queryClient.setQueryData<ScheduledTask[]>(QUERY_KEYS.scheduledTasks, (old) =>
+                queryClient.setQueryData<ScheduledTask[]>(queryKeys.scheduledTasks, (old) =>
                     old ? [...old, optimisticScheduledTask] : [optimisticScheduledTask]
                 );
             }
@@ -290,10 +307,10 @@ export function useSupabaseQuery() {
             // エラー時はロールバック
             console.error('タスク追加エラー:', _err);
             if (context?.previousTasks) {
-                queryClient.setQueryData(QUERY_KEYS.tasks, context.previousTasks);
+                queryClient.setQueryData(queryKeys.tasks, context.previousTasks);
             }
             if (context?.previousScheduledTasks) {
-                queryClient.setQueryData(QUERY_KEYS.scheduledTasks, context.previousScheduledTasks);
+                queryClient.setQueryData(queryKeys.scheduledTasks, context.previousScheduledTasks);
             }
         },
         onSuccess: (newTask) => {
@@ -305,7 +322,7 @@ export function useSupabaseQuery() {
             } else {
                 // 日時指定などは即時反映済みだが、念のため正規化のためにinvalidateしてもいいかもしれない
                 // しかし楽観的更新がスムーズに見えるため、ここでは何もしないか、遅延してinvalidate
-                queryClient.invalidateQueries({ queryKey: QUERY_KEYS.scheduledTasks });
+                queryClient.invalidateQueries({ queryKey: queryKeys.scheduledTasks });
             }
         },
     });
@@ -319,7 +336,7 @@ export function useSupabaseQuery() {
             await supabaseDb.updateTask(task);
 
             // 対応するScheduledTaskも更新
-            const currentScheduled = queryClient.getQueryData<ScheduledTask[]>(QUERY_KEYS.scheduledTasks) ?? [];
+            const currentScheduled = queryClient.getQueryData<ScheduledTask[]>(queryKeys.scheduledTasks) ?? [];
             const relatedSchedules = currentScheduled.filter(s => s.taskId === task.id);
 
             if (relatedSchedules.length > 0) {
@@ -359,19 +376,19 @@ export function useSupabaseQuery() {
             return task;
         },
         onMutate: async (updatedTask) => {
-            await queryClient.cancelQueries({ queryKey: QUERY_KEYS.tasks });
-            await queryClient.cancelQueries({ queryKey: QUERY_KEYS.scheduledTasks });
+            await queryClient.cancelQueries({ queryKey: queryKeys.tasks });
+            await queryClient.cancelQueries({ queryKey: queryKeys.scheduledTasks });
 
-            const previousTasks = queryClient.getQueryData<Task[]>(QUERY_KEYS.tasks);
-            const previousScheduled = queryClient.getQueryData<ScheduledTask[]>(QUERY_KEYS.scheduledTasks);
+            const previousTasks = queryClient.getQueryData<Task[]>(queryKeys.tasks);
+            const previousScheduled = queryClient.getQueryData<ScheduledTask[]>(queryKeys.scheduledTasks);
 
             // Taskの楽観的更新
-            queryClient.setQueryData<Task[]>(QUERY_KEYS.tasks, (old) =>
+            queryClient.setQueryData<Task[]>(queryKeys.tasks, (old) =>
                 old?.map(t => t.id === updatedTask.id ? updatedTask : t) ?? []
             );
 
             // ScheduledTaskの楽観的更新（title, priority, listId等を同期）
-            queryClient.setQueryData<ScheduledTask[]>(QUERY_KEYS.scheduledTasks, (old) =>
+            queryClient.setQueryData<ScheduledTask[]>(queryKeys.scheduledTasks, (old) =>
                 old?.map(s => s.taskId === updatedTask.id ? {
                     ...s,
                     title: updatedTask.title,
@@ -390,10 +407,10 @@ export function useSupabaseQuery() {
         },
         onError: (_err, _variables, context) => {
             if (context?.previousTasks) {
-                queryClient.setQueryData(QUERY_KEYS.tasks, context.previousTasks);
+                queryClient.setQueryData(queryKeys.tasks, context.previousTasks);
             }
             if (context?.previousScheduled) {
-                queryClient.setQueryData(QUERY_KEYS.scheduledTasks, context.previousScheduled);
+                queryClient.setQueryData(queryKeys.scheduledTasks, context.previousScheduled);
             }
         },
         onSuccess: () => {
@@ -413,17 +430,17 @@ export function useSupabaseQuery() {
             return { id, hasCompletedSchedule };
         },
         onMutate: async (id) => {
-            await queryClient.cancelQueries({ queryKey: QUERY_KEYS.tasks });
-            await queryClient.cancelQueries({ queryKey: QUERY_KEYS.scheduledTasks });
+            await queryClient.cancelQueries({ queryKey: queryKeys.tasks });
+            await queryClient.cancelQueries({ queryKey: queryKeys.scheduledTasks });
 
-            const previousTasks = queryClient.getQueryData<Task[]>(QUERY_KEYS.tasks);
-            const previousScheduled = queryClient.getQueryData<ScheduledTask[]>(QUERY_KEYS.scheduledTasks);
+            const previousTasks = queryClient.getQueryData<Task[]>(queryKeys.tasks);
+            const previousScheduled = queryClient.getQueryData<ScheduledTask[]>(queryKeys.scheduledTasks);
 
             // 楽観的更新
-            queryClient.setQueryData<Task[]>(QUERY_KEYS.tasks, (old) =>
+            queryClient.setQueryData<Task[]>(queryKeys.tasks, (old) =>
                 old?.filter(t => t.id !== id) ?? []
             );
-            queryClient.setQueryData<ScheduledTask[]>(QUERY_KEYS.scheduledTasks, (old) =>
+            queryClient.setQueryData<ScheduledTask[]>(queryKeys.scheduledTasks, (old) =>
                 old?.filter(t => t.taskId !== id) ?? []
             );
 
@@ -431,10 +448,10 @@ export function useSupabaseQuery() {
         },
         onError: (_err, _variables, context) => {
             if (context?.previousTasks) {
-                queryClient.setQueryData(QUERY_KEYS.tasks, context.previousTasks);
+                queryClient.setQueryData(queryKeys.tasks, context.previousTasks);
             }
             if (context?.previousScheduled) {
-                queryClient.setQueryData(QUERY_KEYS.scheduledTasks, context.previousScheduled);
+                queryClient.setQueryData(queryKeys.scheduledTasks, context.previousScheduled);
             }
         },
         onSuccess: ({ hasCompletedSchedule }) => {
@@ -459,11 +476,11 @@ export function useSupabaseQuery() {
         onMutate: async (newEvents) => {
             console.log('[saveEventsMutation] onMutate: 楽観的更新開始');
             // 進行中のクエリをキャンセル（競合防止）
-            await queryClient.cancelQueries({ queryKey: QUERY_KEYS.events });
-            const previousEvents = queryClient.getQueryData<WorkEvent[]>(QUERY_KEYS.events);
+            await queryClient.cancelQueries({ queryKey: queryKeys.events });
+            const previousEvents = queryClient.getQueryData<WorkEvent[]>(queryKeys.events);
             console.log('[saveEventsMutation] 前のイベント数:', previousEvents?.length);
             // 楽観的更新
-            queryClient.setQueryData<WorkEvent[]>(QUERY_KEYS.events, newEvents);
+            queryClient.setQueryData<WorkEvent[]>(queryKeys.events, newEvents);
             console.log('[saveEventsMutation] 楽観的更新完了:', newEvents.length, '件に設定');
             return { previousEvents };
         },
@@ -471,7 +488,7 @@ export function useSupabaseQuery() {
             console.error('[saveEventsMutation] onError:', err);
             if (context?.previousEvents) {
                 console.log('[saveEventsMutation] ロールバック:', context.previousEvents.length, '件に戻す');
-                queryClient.setQueryData(QUERY_KEYS.events, context.previousEvents);
+                queryClient.setQueryData(queryKeys.events, context.previousEvents);
             }
         },
         onSuccess: () => {
@@ -491,12 +508,12 @@ export function useSupabaseQuery() {
             return newScheduledTasks;
         },
         onMutate: async (newScheduledTasks) => {
-            await queryClient.cancelQueries({ queryKey: QUERY_KEYS.scheduledTasks });
-            const previousScheduled = queryClient.getQueryData<ScheduledTask[]>(QUERY_KEYS.scheduledTasks);
+            await queryClient.cancelQueries({ queryKey: queryKeys.scheduledTasks });
+            const previousScheduled = queryClient.getQueryData<ScheduledTask[]>(queryKeys.scheduledTasks);
 
             // 楽観的更新: 指定されたタスクを即座にUIに反映
             // 楽観的更新: 指定されたタスクを即座にUIに反映（追加・更新）
-            queryClient.setQueryData<ScheduledTask[]>(QUERY_KEYS.scheduledTasks, (old) => {
+            queryClient.setQueryData<ScheduledTask[]>(queryKeys.scheduledTasks, (old) => {
                 const current = old || [];
                 const taskMap = new Map(current.map(t => [t.id, t]));
 
@@ -511,7 +528,7 @@ export function useSupabaseQuery() {
         },
         onError: (_err, _variables, context) => {
             if (context?.previousScheduled) {
-                queryClient.setQueryData(QUERY_KEYS.scheduledTasks, context.previousScheduled);
+                queryClient.setQueryData(queryKeys.scheduledTasks, context.previousScheduled);
             }
         },
     });
@@ -525,16 +542,16 @@ export function useSupabaseQuery() {
             return id;
         },
         onMutate: async (id) => {
-            await queryClient.cancelQueries({ queryKey: QUERY_KEYS.scheduledTasks });
-            const previousScheduled = queryClient.getQueryData<ScheduledTask[]>(QUERY_KEYS.scheduledTasks);
-            queryClient.setQueryData<ScheduledTask[]>(QUERY_KEYS.scheduledTasks, (old) =>
+            await queryClient.cancelQueries({ queryKey: queryKeys.scheduledTasks });
+            const previousScheduled = queryClient.getQueryData<ScheduledTask[]>(queryKeys.scheduledTasks);
+            queryClient.setQueryData<ScheduledTask[]>(queryKeys.scheduledTasks, (old) =>
                 old?.filter(t => t.id !== id) ?? []
             );
             return { previousScheduled };
         },
         onError: (_err, _variables, context) => {
             if (context?.previousScheduled) {
-                queryClient.setQueryData(QUERY_KEYS.scheduledTasks, context.previousScheduled);
+                queryClient.setQueryData(queryKeys.scheduledTasks, context.previousScheduled);
             }
         },
     });
@@ -548,17 +565,17 @@ export function useSupabaseQuery() {
             return ids;
         },
         onMutate: async (ids) => {
-            await queryClient.cancelQueries({ queryKey: QUERY_KEYS.scheduledTasks });
-            const previousScheduled = queryClient.getQueryData<ScheduledTask[]>(QUERY_KEYS.scheduledTasks);
+            await queryClient.cancelQueries({ queryKey: queryKeys.scheduledTasks });
+            const previousScheduled = queryClient.getQueryData<ScheduledTask[]>(queryKeys.scheduledTasks);
             const idsSet = new Set(ids);
-            queryClient.setQueryData<ScheduledTask[]>(QUERY_KEYS.scheduledTasks, (old) =>
+            queryClient.setQueryData<ScheduledTask[]>(queryKeys.scheduledTasks, (old) =>
                 old?.filter(t => !idsSet.has(t.id)) ?? []
             );
             return { previousScheduled };
         },
         onError: (_err, _variables, context) => {
             if (context?.previousScheduled) {
-                queryClient.setQueryData(QUERY_KEYS.scheduledTasks, context.previousScheduled);
+                queryClient.setQueryData(queryKeys.scheduledTasks, context.previousScheduled);
             }
         },
     });
@@ -572,14 +589,14 @@ export function useSupabaseQuery() {
             return newSettings;
         },
         onMutate: async (newSettings) => {
-            await queryClient.cancelQueries({ queryKey: QUERY_KEYS.settings });
-            const previousSettings = queryClient.getQueryData<AppSettings>(QUERY_KEYS.settings);
-            queryClient.setQueryData<AppSettings>(QUERY_KEYS.settings, newSettings);
+            await queryClient.cancelQueries({ queryKey: queryKeys.settings });
+            const previousSettings = queryClient.getQueryData<AppSettings>(queryKeys.settings);
+            queryClient.setQueryData<AppSettings>(queryKeys.settings, newSettings);
             return { previousSettings };
         },
         onError: (_err, _variables, context) => {
             if (context?.previousSettings) {
-                queryClient.setQueryData(QUERY_KEYS.settings, context.previousSettings);
+                queryClient.setQueryData(queryKeys.settings, context.previousSettings);
             }
         },
         onSuccess: () => {
@@ -625,9 +642,11 @@ export function useSupabaseQuery() {
         // IDとタイムスタンプを事前生成して楽観的更新と一致させる
         const id = crypto.randomUUID();
         const createdAt = Date.now();
+        const scheduledTaskId = options?.manualScheduledTime ? crypto.randomUUID() : undefined;
 
         await addTaskMutation.mutateAsync({
             id,
+            scheduledTaskId,
             title,
             scheduleType,
             createdAt,
@@ -676,25 +695,28 @@ export function useSupabaseQuery() {
 
     const addTaskList = async (list: TaskList) => {
         await supabaseDb.addTaskList(list);
-        await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.taskLists });
+        await queryClient.invalidateQueries({ queryKey: queryKeys.taskLists });
     };
 
     const updateTaskList = async (list: TaskList) => {
         // 楽観的更新（UIを即座に更新）
-        queryClient.setQueryData<TaskList[]>(QUERY_KEYS.taskLists, (old) =>
-            old?.map(l => l.id === list.id ? list : l).sort((a, b) => a.createdAt - b.createdAt) ?? []
+        queryClient.setQueryData<TaskList[]>(queryKeys.taskLists, (old) =>
+            old?.map(l => l.id === list.id ? list : l).sort((a, b) =>
+                (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER) ||
+                a.createdAt - b.createdAt
+            ) ?? []
         );
         // DBに保存
         await supabaseDb.updateTaskList(list);
         // 再取得して整合性を保つ
-        await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.taskLists });
+        await queryClient.invalidateQueries({ queryKey: queryKeys.taskLists });
     };
 
     const deleteTaskList = async (id: string) => {
         await supabaseDb.deleteTaskList(id);
-        await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.taskLists });
+        await queryClient.invalidateQueries({ queryKey: queryKeys.taskLists });
         // 削除されたリストに属していたタスクはlist_idがnullになるのでタスクも再取得
-        await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tasks });
+        await queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
     };
 
     return {

@@ -1,6 +1,13 @@
 import type { Task, ScheduledTask, WorkEvent, AppSettings, RecurrenceRule } from '../types';
 import { isSameDay, getHours, setHours, setMinutes, startOfDay, subDays, addDays, addWeeks, addMonths, addYears, isWeekend, getDay } from 'date-fns';
 
+function setDayOfMonthClamped(date: Date, dayOfMonth: number): Date {
+    const target = new Date(date);
+    const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+    target.setDate(Math.min(dayOfMonth, lastDay));
+    return target;
+}
+
 /**
  * 繰り返しルールに基づいて次の予定日時を計算する
  */
@@ -40,18 +47,13 @@ export function getNextOccurrence(rule: RecurrenceRule, lastScheduledTime: numbe
             }
             break;
         case 'biweekly':
-            // 隔週: 2週間後の同じ曜日
-            nextDate = addWeeks(lastDate, 2);
+            // 隔週: interval が指定された場合は「2 * interval」週ごと
+            nextDate = addWeeks(lastDate, 2 * interval);
             break;
         case 'monthly':
             nextDate = addMonths(lastDate, interval);
-            // dayOfMonthが指定されている場合、その日に補正（必要なら）
             if (rule.dayOfMonth) {
-                // 基本的にaddMonthsで日付は維持されるが、月末処理などでずれた場合に元に戻すか？
-                // 例: 1/31 -> addMonths -> 2/28. dayOfMonth=31なら、2/28のままでよい（31日はないから）。
-                // 逆に 2/28 -> addMonths -> 3/28. dayOfMonth=31なら 3/31にすべき？
-                // ここでは単純なaddMonthsのみとする。
-                // もし厳密にするなら setDate(rule.dayOfMonth) を試みるが、月によって存在しない日の処理が必要。
+                nextDate = setDayOfMonthClamped(nextDate, rule.dayOfMonth);
             }
             break;
         case 'yearly':

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Supabase Edge Function (Deno runtime)
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -235,6 +234,14 @@ function getJSTTomorrowDateStr(): string {
 Deno.serve(async (req) => {
     if (req.method === 'OPTIONS') {
         return new Response(null, { status: 204 })
+    }
+
+    const cronSecret = Deno.env.get('NOTIFY_CRON_SECRET')
+    const requestSecret = req.headers.get('x-cron-secret')
+
+    if (!cronSecret || requestSecret !== cronSecret) {
+        console.error('[notify-line] unauthorized cron request')
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!

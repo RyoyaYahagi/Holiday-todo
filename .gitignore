@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dev-dist
 *.local
 
 # Editor directories and files
@@ -30,3 +31,10 @@ dist-ssr
 
 # Personal data files
 *.ics
+
+# Supabase local metadata
+supabase/.temp/
+
+# Generated/review artifacts
+docs/chat-history.md
+index.js

@@ -9,7 +9,7 @@ create extension if not exists pg_net;
 -- select cron.unschedule('discord-notify-cron');
 
 -- 3. 新しいCronジョブを登録（毎分実行 - LINE/Discord両対応の notify-line を使用）
--- 注意: <project-ref> と <ANON_KEY> を実際の値に置き換えてください
+-- 注意: <project-ref>、<ANON_KEY>、<NOTIFY_CRON_SECRET> を実際の値に置き換えてください
 select cron.schedule(
   'line-notify-cron',
   '* * * * *',  -- 毎分実行
@@ -18,7 +18,8 @@ select cron.schedule(
     url := 'https://<project-ref>.supabase.co/functions/v1/notify-line',
     headers := jsonb_build_object(
       'Authorization', 'Bearer <ANON_KEY>',
-      'Content-Type', 'application/json'
+      'Content-Type', 'application/json',
+      'x-cron-secret', '<NOTIFY_CRON_SECRET>'
     ),
     body := '{}'::jsonb
   );

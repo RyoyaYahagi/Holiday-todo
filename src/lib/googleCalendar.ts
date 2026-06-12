@@ -54,34 +54,43 @@ export class GoogleCalendarClient {
         const threeMonthsLater = new Date();
         threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3);
 
-        const params = new URLSearchParams({
-            timeMin: timeMin || oneYearAgo.toISOString(),
-            timeMax: timeMax || threeMonthsLater.toISOString(),
-            singleEvents: 'true',
-            orderBy: 'startTime',
-            maxResults: '500',
-        });
+        const allItems: GoogleCalendarEvent[] = [];
+        let pageToken: string | undefined;
 
-        const response = await fetch(
-            `https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`,
-            {
-                headers: {
-                    Authorization: `Bearer ${this.accessToken}`,
-                    'Content-Type': 'application/json',
-                },
+        do {
+            const params = new URLSearchParams({
+                timeMin: timeMin || oneYearAgo.toISOString(),
+                timeMax: timeMax || threeMonthsLater.toISOString(),
+                singleEvents: 'true',
+                orderBy: 'startTime',
+                maxResults: '500',
+            });
+            if (pageToken) {
+                params.set('pageToken', pageToken);
             }
-        );
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('[GoogleCalendarClient] APIエラー:', response.status, errorText);
-            throw new Error(`Google Calendar API error: ${response.status}`);
-        }
+            const response = await fetch(
+                `https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${this.accessToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                }
+            );
 
-        const data: GoogleCalendarEventsResponse = await response.json();
-        console.log('[GoogleCalendarClient] 取得イベント数:', data.items.length);
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('[GoogleCalendarClient] APIエラー:', response.status, errorText);
+                throw new Error(`Google Calendar API error: ${response.status}`);
+            }
 
-        return data.items
+            const data: GoogleCalendarEventsResponse = await response.json();
+            allItems.push(...data.items);
+            pageToken = data.nextPageToken;
+        } while (pageToken);
+
+        return allItems
             .filter(event => event.start?.dateTime || event.start?.date)
             .map(event => this.convertToWorkEvent(event));
     }
@@ -104,6 +113,7 @@ export class GoogleCalendarClient {
         const eventType = this.determineEventType(summary, start);
 
         return {
+            id: event.id,
             title: summary,
             start,
             end,
