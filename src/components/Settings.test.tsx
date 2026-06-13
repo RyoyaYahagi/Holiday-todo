@@ -40,7 +40,7 @@ describe('Settings Component', () => {
     it('renders correctly with initial settings', () => {
         render(<Settings {...defaultProps} />);
 
-        expect(screen.getByDisplayValue(mockSettings.lineUserId)).toBeInTheDocument();
+        expect(screen.getByText('💬 通知設定')).toBeInTheDocument();
         // 保存ボタンが複数存在するため、少なくとも1つ存在することを確認
         expect(screen.getAllByRole('button', { name: /保存/i }).length).toBeGreaterThan(0);
     });
@@ -48,8 +48,8 @@ describe('Settings Component', () => {
     it('does not call onUpdateSettings when values change but save is not clicked', () => {
         render(<Settings {...defaultProps} />);
 
-        const userIdInput = screen.getByDisplayValue(mockSettings.lineUserId);
-        fireEvent.change(userIdInput, { target: { value: 'U9999999999999999999999999999999' } });
+        const intervalSelect = screen.getByDisplayValue('2時間');
+        fireEvent.change(intervalSelect, { target: { value: '3' } });
 
         expect(mockOnUpdateSettings).not.toHaveBeenCalled();
     });
@@ -57,9 +57,8 @@ describe('Settings Component', () => {
     it('calls onUpdateSettings with new values when save is clicked', () => {
         render(<Settings {...defaultProps} />);
 
-        const userIdInput = screen.getByDisplayValue(mockSettings.lineUserId);
-        const newUserId = 'U9999999999999999999999999999999';
-        fireEvent.change(userIdInput, { target: { value: newUserId } });
+        const intervalSelect = screen.getByDisplayValue('2時間');
+        fireEvent.change(intervalSelect, { target: { value: '3' } });
 
         // 複数の保存ボタンがあるため、「設定を保存する」という完全なテキストを持つボタンを探す
         const saveButtons = screen.getAllByRole('button', { name: /保存/i });
@@ -68,7 +67,7 @@ describe('Settings Component', () => {
 
         expect(mockOnUpdateSettings).toHaveBeenCalledWith({
             ...mockSettings,
-            lineUserId: newUserId
+            scheduleInterval: 3
         });
 
         // Success message should appear (複数の箇所に表示される可能性がある)
@@ -82,8 +81,8 @@ describe('Settings Component', () => {
 
         render(<Settings {...defaultProps} />);
 
-        const userIdInput = screen.getByDisplayValue(mockSettings.lineUserId);
-        fireEvent.change(userIdInput, { target: { value: 'U9999999999999999999999999999999' } });
+        const intervalSelect = screen.getByDisplayValue('2時間');
+        fireEvent.change(intervalSelect, { target: { value: '3' } });
 
         // 複数の元に戻すボタンがあるため、最初のものを使用
         const resetButtons = screen.getAllByRole('button', { name: /元に戻す/i });
@@ -92,7 +91,7 @@ describe('Settings Component', () => {
 
         expect(confirmSpy).toHaveBeenCalled();
         // Should revert to original value
-        expect(screen.getByDisplayValue(mockSettings.lineUserId)).toBeInTheDocument();
+        expect(screen.getByDisplayValue('2時間')).toBeInTheDocument();
         // Save should not be called
         expect(mockOnUpdateSettings).not.toHaveBeenCalled();
 

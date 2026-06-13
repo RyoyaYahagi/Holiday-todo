@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Supabase Edge Function (Deno runtime)
 // LINE Webhook受信用 - フォロー/アンフォロー/メッセージイベントを処理
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'

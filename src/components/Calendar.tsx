@@ -111,7 +111,7 @@ export const Calendar: React.FC<CalendarProps> = ({ events, scheduledTasks, task
             isNormallyHoliday,
             hasCustomSetting: isExcluded || isForceIncluded
         };
-    }, [selectedDate, events, scheduledTasks]);
+    }, [selectedDate, events, filteredScheduledTasks]);
 
     /**
      * 日付セルのクリックハンドラ - 詳細モーダルを開く

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Supabase Edge Function (Deno runtime)
 // LINE連携用リンクトークン生成
 

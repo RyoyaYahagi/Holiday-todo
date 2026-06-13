@@ -77,6 +77,7 @@ export interface ScheduledTask extends Task {
 export type EventType = '夜勤' | '日勤' | '休み' | 'その他' | 'スケジュール除外' | 'スケジュール対象';
 
 export interface WorkEvent {
+    id: string;
     title: string;
     start: Date;
     end: Date;

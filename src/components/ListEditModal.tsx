@@ -30,7 +30,6 @@ export const ListEditModal: React.FC<ListEditModalProps> = ({
 
     // リスト変更時にフォームを初期化
     // モーダル表示時の初期化パターン（propsからの初期値設定）
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => {
         if (isOpen) {
             if (list) {

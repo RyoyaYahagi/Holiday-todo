@@ -31,6 +31,7 @@ const createMockEvent = (
     eventType: '夜勤' | '日勤' | '休み' | 'その他' | 'スケジュール除外' | 'スケジュール対象',
     endDate?: Date
 ): WorkEvent => ({
+    id: crypto.randomUUID(),
     title: `${eventType}イベント`,
     start: date,
     end: endDate || new Date(date.getTime() + 8 * 60 * 60 * 1000), // 8時間後
@@ -274,6 +275,17 @@ describe('getNextOccurrence - 繰り返し次回日時計算', () => {
         });
     });
 
+    describe('biweekly（隔週）', () => {
+        it('interval=2の場合、4週間後に繰り返し', () => {
+            const rule: RecurrenceRule = { type: 'biweekly', interval: 2 };
+            const next = getNextOccurrence(rule, baseTime);
+
+            const nextDate = new Date(next);
+            expect(nextDate.getDate()).toBe(12);
+            expect(nextDate.getMonth()).toBe(1); // 2月
+        });
+    });
+
     describe('monthly（毎月）', () => {
         it('interval=1で翌月の同日に繰り返し', () => {
             const rule: RecurrenceRule = { type: 'monthly', interval: 1 };
@@ -282,6 +294,20 @@ describe('getNextOccurrence - 繰り返し次回日時計算', () => {
             const nextDate = new Date(next);
             expect(nextDate.getMonth()).toBe(1); // 2月
             expect(nextDate.getDate()).toBe(15);
+        });
+
+        it('dayOfMonth=31の場合、存在しない月は月末に丸めて次月で31日に戻す', () => {
+            const rule: RecurrenceRule = { type: 'monthly', interval: 1, dayOfMonth: 31 };
+            const feb = getNextOccurrence(rule, new Date('2024-01-31T10:00:00').getTime());
+            const mar = getNextOccurrence(rule, feb);
+
+            const febDate = new Date(feb);
+            expect(febDate.getMonth()).toBe(1); // 2月
+            expect(febDate.getDate()).toBe(29); // 2024年はうるう年
+
+            const marDate = new Date(mar);
+            expect(marDate.getMonth()).toBe(2); // 3月
+            expect(marDate.getDate()).toBe(31);
         });
     });
 

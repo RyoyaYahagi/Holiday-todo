@@ -19,8 +19,8 @@ describe('computeEventDiff - イベント差分計算', () => {
     it('DBが空で新規イベントがある場合、すべて追加されること', () => {
         const dbRows: MinimalEventRow[] = [];
         const events: WorkEvent[] = [
-            { title: '休み', start: new Date('2026-06-12T00:00:00Z'), end: new Date('2026-06-12T23:59:59Z'), eventType: '休み' },
-            { title: '日勤', start: new Date('2026-06-13T09:00:00Z'), end: new Date('2026-06-13T18:00:00Z'), eventType: '日勤' }
+            { id: 'event-1', title: '休み', start: new Date('2026-06-12T00:00:00Z'), end: new Date('2026-06-12T23:59:59Z'), eventType: '休み' },
+            { id: 'event-2', title: '日勤', start: new Date('2026-06-13T09:00:00Z'), end: new Date('2026-06-13T18:00:00Z'), eventType: '日勤' }
         ];
 
         const result = computeEventDiff(dbRows, events, userId);
@@ -53,7 +53,7 @@ describe('computeEventDiff - イベント差分計算', () => {
             { id: 'db-1', title: '休み', start_time: '2026-06-12T00:00:00Z', end_time: '2026-06-12T23:59:59Z', event_type: '休み' }
         ];
         const events: WorkEvent[] = [
-            { title: '休み', start: new Date('2026-06-12T00:00:00Z'), end: new Date('2026-06-12T23:59:59Z'), eventType: '休み' }
+            { id: 'event-1', title: '休み', start: new Date('2026-06-12T00:00:00Z'), end: new Date('2026-06-12T23:59:59Z'), eventType: '休み' }
         ];
 
         const result = computeEventDiff(dbRows, events, userId);
@@ -71,9 +71,9 @@ describe('computeEventDiff - イベント差分計算', () => {
         ];
         const events: WorkEvent[] = [
             // 変更なし
-            { title: '休み', start: new Date('2026-06-12T00:00:00Z'), end: new Date('2026-06-12T23:59:59Z'), eventType: '休み' },
+            { id: 'event-1', title: '休み', start: new Date('2026-06-12T00:00:00Z'), end: new Date('2026-06-12T23:59:59Z'), eventType: '休み' },
             // 追加対象
-            { title: '日勤', start: new Date('2026-06-15T09:00:00Z'), end: new Date('2026-06-15T18:00:00Z'), eventType: '日勤' }
+            { id: 'event-2', title: '日勤', start: new Date('2026-06-15T09:00:00Z'), end: new Date('2026-06-15T18:00:00Z'), eventType: '日勤' }
         ];
 
         const result = computeEventDiff(dbRows, events, userId);

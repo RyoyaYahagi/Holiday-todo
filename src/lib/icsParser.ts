@@ -190,6 +190,7 @@ export class IcsParser {
         const end = raw.dtend ? this.parseIcsDate(raw.dtend) : start;
 
         return {
+            id: crypto.randomUUID(),
             title: summary,
             start,
             end,

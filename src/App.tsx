@@ -31,6 +31,7 @@ function App() {
     updateTask,
     deleteTask,
     deleteScheduledTask,
+    deleteScheduledTasks,
     updateSettings,
     saveEvents,
     saveScheduledTasks,
@@ -58,30 +59,26 @@ function App() {
 
   // リストの並び替え処理
   const handleReorderList = async (listId: string, direction: 'up' | 'down') => {
-    console.log('[handleReorderList] 開始:', listId, direction);
     const currentIndex = taskLists.findIndex(l => l.id === listId);
-    console.log('[handleReorderList] currentIndex:', currentIndex);
     if (currentIndex === -1) return;
 
     const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-    console.log('[handleReorderList] targetIndex:', targetIndex);
     if (targetIndex < 0 || targetIndex >= taskLists.length) return;
 
-    const currentList = taskLists[currentIndex];
-    const targetList = taskLists[targetIndex];
-    console.log('[handleReorderList] 入れ替え:', currentList.name, '<->', targetList.name);
-    console.log('[handleReorderList] 元のcreatedAt:', currentList.createdAt, targetList.createdAt);
-
-    // createdAtを単純に入れ替える
-    const tempCreatedAt = currentList.createdAt;
+    const normalizedLists = taskLists.map((list, index) => ({
+      ...list,
+      sortOrder: list.sortOrder ?? index
+    }));
+    const currentList = normalizedLists[currentIndex];
+    const targetList = normalizedLists[targetIndex];
+    const currentSortOrder = currentList.sortOrder ?? currentIndex;
+    const targetSortOrder = targetList.sortOrder ?? targetIndex;
 
     try {
-      // 同時に更新（順次更新だと再取得で問題が起きる）
       await Promise.all([
-        updateTaskList({ ...currentList, createdAt: targetList.createdAt }),
-        updateTaskList({ ...targetList, createdAt: tempCreatedAt })
+        updateTaskList({ ...currentList, sortOrder: targetSortOrder }),
+        updateTaskList({ ...targetList, sortOrder: currentSortOrder })
       ]);
-      console.log('[handleReorderList] 完了');
     } catch (err) {
       console.error('[handleReorderList] エラー:', err);
     }
@@ -232,6 +229,7 @@ function App() {
       // 通常は休日 → 除外に変更
       action = '除外を追加';
       const newExcludeEvent: WorkEvent = {
+        id: crypto.randomUUID(),
         title: 'スケジュール除外',
         start: normalizedDate,
         end: normalizedDate,
@@ -242,6 +240,7 @@ function App() {
       // 通常は勤務日 → 対象に変更
       action = '対象を追加';
       const newIncludeEvent: WorkEvent = {
+        id: crypto.randomUUID(),
         title: 'スケジュール対象',
         start: normalizedDate,
         end: normalizedDate,
@@ -322,13 +321,19 @@ function App() {
                 // 完了済みタスクを一括削除
                 // 繰り返しタスクのインスタンスはScheduledTaskのみ削除
                 const completedTasks = scheduledTasks.filter(st => st.isCompleted);
-                for (const st of completedTasks) {
-                  if (st.scheduleType === 'recurrence') {
-                    await deleteScheduledTask(st.id);
-                  } else {
-                    await deleteTask(st.taskId);
-                  }
-                }
+                const recurrenceScheduleIds = completedTasks
+                  .filter(st => st.scheduleType === 'recurrence')
+                  .map(st => st.id);
+                const taskIds = Array.from(new Set(
+                  completedTasks
+                    .filter(st => st.scheduleType !== 'recurrence')
+                    .map(st => st.taskId)
+                ));
+
+                await Promise.all([
+                  deleteScheduledTasks(recurrenceScheduleIds),
+                  ...taskIds.map(taskId => deleteTask(taskId))
+                ]);
               }}
             />
           </div>
@@ -352,6 +357,7 @@ function App() {
               onAddEvent={(date) => {
                 // 選択された日付に新規イベントを作成
                 const newEvent: WorkEvent = {
+                  id: crypto.randomUUID(),
                   title: '',
                   eventType: 'その他',
                   start: new Date(date.setHours(9, 0, 0, 0)),
@@ -585,10 +591,9 @@ function App() {
               <button
                 onClick={async () => {
                   if (originalEvent) {
-                    // 既存のイベントを更新（オリジナルの開始時刻とタイトルで特定）
+                    // 既存のイベントをIDで更新
                     const updatedEvents = events.map(e =>
-                      e.start.getTime() === originalEvent.start.getTime() &&
-                        e.title === originalEvent.title
+                      e.id === originalEvent.id
                         ? editingEvent
                         : e
                     );
@@ -621,10 +626,9 @@ function App() {
               <button
                 onClick={async () => {
                   if (window.confirm('この予定を削除しますか？')) {
-                    // オリジナルの開始時刻とタイトルで特定して削除
+                    // オリジナルのIDで削除
                     const filteredEvents = events.filter(e =>
-                      !(e.start.getTime() === originalEvent.start.getTime() &&
-                        e.title === originalEvent.title)
+                      e.id !== originalEvent.id
                     );
                     await saveEvents(filteredEvents);
                     setIsEventModalOpen(false);

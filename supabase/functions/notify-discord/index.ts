@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Supabase Edge Function (Deno runtime)
 // deno-lint-ignore-file no-explicit-any
 // 【非推奨】この関数は非推奨になりました。LINE/Discord両対応の `notify-line` を使用してください。
@@ -338,4 +337,3 @@ Deno.serve(async (req) => {
         { headers: { 'Content-Type': 'application/json' } }
     )
 })
-
